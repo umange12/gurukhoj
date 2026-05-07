@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Student Registration – GuruKhoj</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="topbar"><a href="/" class="brand" style="text-decoration:none"><div class="brand-logo">📚</div><div><div class="brand-name">GuruKhoj</div></div></a><div class="topbar-right"><button class="theme-toggle" onclick="toggleTheme()"><span id="themeIcon">☀️</span></button>{% if user %}<a href="{{ '/admin' if user.role=='admin' else '/teacher-dashboard' if user.role=='teacher' else '/student-portal' }}" class="btn btn-purple btn-sm">Dashboard</a>{% else %}<a href="/login" class="btn btn-purple btn-sm">Login</a>{% endif %}</div></div>
+<nav class="navbar"><a href="/">🏠 Home</a><a href="/our-teachers">👩‍🏫 Our Teachers</a><a href="/student-registration" class="active">🎓 Register</a><a href="/teacher-enrollment">✨ Teach With Us</a></nav>
+<section style="padding:60px 5%">
+  <div class="section-inner" style="max-width:680px">
+    <div class="section-head reveal"><div class="section-tag">🎓 Student Registration</div><div class="section-title">Start Your Learning Journey</div><div class="section-sub">Fill out the form and our team will match you with the perfect tutor within 24 hours</div></div>
+    <div class="card reveal" style="padding:32px">
+      <div class="form-row"><div class="form-group"><label>Student Full Name *</label><input type="text" id="r_name" placeholder="Rohan Kumar"></div><div class="form-group"><label>Class / Grade *</label><input type="text" id="r_class" placeholder="Class 10"></div></div>
+      <div class="form-row"><div class="form-group"><label>Board *</label><select id="r_board"><option>CBSE</option><option>ICSE</option><option>UP Board</option><option>Other</option></select></div><div class="form-group"><label>Gender</label><select id="r_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label>Parent / Guardian Name *</label><input type="text" id="r_parent" placeholder="Mr. Kumar"></div><div class="form-group"><label>Parent Phone *</label><input type="tel" id="r_phone" placeholder="+91 98765 43210"></div></div>
+      <div class="form-row"><div class="form-group"><label>Student Email</label><input type="email" id="r_email" placeholder="student@email.com"></div><div class="form-group"><label>Date of Birth</label><input type="date" id="r_dob"></div></div>
+      <div class="form-group"><label>Subjects Needed (select all that apply)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="subjectPicker">
+          {% for s in ['Mathematics','Physics','Chemistry','Biology','Computer Science','English','Hindi','Science','History','Economics'] %}
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;transition:.2s"><input type="checkbox" value="{{ s }}" style="width:auto"> {{ s }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-row"><div class="form-group"><label>Preferred Area</label><input type="text" id="r_area" placeholder="Rajpur Road, Dehradun"></div><div class="form-group"><label>Preferred Teaching Mode</label><select id="r_mode"><option value="">Any Mode</option><option>Home Visit</option><option>Online</option><option>Both</option></select></div></div>
+      <div class="form-group"><label>Preferred Teacher (Optional)</label><select id="r_teacher"><option value="">Let AI decide (Recommended)</option>{% for t in teachers %}<option value="{{ t.id }}">{{ t.full_name }} – {{ t.subjects[:40] }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label>Additional Notes</label><textarea id="r_notes" rows="2" placeholder="Any specific requirements or goals..."></textarea></div>
+      <button class="btn btn-purple w-full" style="justify-content:center;font-size:14px;padding:13px" onclick="submitReg()">🎓 Submit Registration →</button>
+    </div>
+  </div>
+</section>
+<footer class="footer"><div class="footer-bottom">© 2025 GuruKhoj — <a href="/" style="color:var(--purple-l)">Home</a></div></footer>
+<div id="toast" class="toast"></div>
+<script src="/static/js/main.js"></script>
+<script>
+// Style checkbox labels
+document.querySelectorAll('#subjectPicker label').forEach(l=>{
+  l.querySelector('input').addEventListener('change',function(){l.style.borderColor=this.checked?'var(--purple)':'var(--border2)';l.style.background=this.checked?'rgba(99,102,241,.12)':'var(--card)';l.style.color=this.checked?'var(--purple-l)':'var(--text2)'});
+});
+async function submitReg(){
+  const subjects=[...document.querySelectorAll('#subjectPicker input:checked')].map(i=>i.value).join(',');
+  const d={name:document.getElementById('r_name').value,class_grade:document.getElementById('r_class').value,board:document.getElementById('r_board').value,gender:document.getElementById('r_gender').value,parent_name:document.getElementById('r_parent').value,parent_phone:document.getElementById('r_phone').value,email:document.getElementById('r_email').value,subjects,area:document.getElementById('r_area').value,mode:document.getElementById('r_mode').value,teacher_id:document.getElementById('r_teacher').value,notes:document.getElementById('r_notes').value};
+  if(!d.name||!d.class_grade||!d.parent_phone){showToast('Please fill all required fields','error');return}
+  const btn=event.target;btn.textContent='⏳ Submitting...';btn.disabled=true;
+  const res=await api('/student-registration','POST',d);
+  if(res.success){showToast('Registration submitted! We will contact you within 24 hours. 🎉');btn.textContent='✅ Submitted!';}
+  else{showToast(res.error||'Submission failed','error');btn.textContent='🎓 Submit Registration →';btn.disabled=false;}
+}
+</script>
+</body></html>

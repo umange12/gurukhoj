@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1>Our Verified Teachers</h1>
+  <p>35+ qualified tutors across 50+ Dehradun areas — AI-powered search & recommendations</p>
+</div>
+
+<div class="search-bar-section">
+  <div class="search-row">
+    <input type="text" id="searchInput" placeholder="🔍 Search by name, subject, area... (BM25 AI Search)" oninput="liveSearch(this.value)" class="search-input">
+    <button onclick="clearSearch()" class="btn-outline btn-sm">Clear</button>
+  </div>
+  <div class="filter-row">
+    <select id="fSubject" onchange="filterTeachers()"><option value="">All Subjects</option>
+      <option>Mathematics</option><option>Physics</option><option>Chemistry</option><option>Biology</option>
+      <option>English</option><option>Computer Science</option><option>Hindi</option><option>Science</option>
+      <option>History</option><option>Economics</option><option>Sanskrit</option></select>
+    <select id="fMode" onchange="filterTeachers()"><option value="">Any Mode</option>
+      <option>Online</option><option>Home Visit</option><option>Both</option></select>
+    <select id="fBudget" onchange="filterTeachers()"><option value="0">Any Budget</option>
+      <option value="1200">Under ₹1200</option><option value="1500">Under ₹1500</option>
+      <option value="2000">Under ₹2000</option><option value="2500">Under ₹2500</option></select>
+    <select id="fSort" onchange="filterTeachers()"><option value="rating">Sort: Rating</option>
+      <option value="fee_asc">Fee: Low to High</option><option value="fee_desc">Fee: High to Low</option>
+      <option value="exp">Experience</option></select>
+  </div>
+</div>
+
+<div class="ai-rec-section">
+  <button onclick="toggleAIPanel()" class="btn-primary">🤖 Get AI Recommendation (Random Forest)</button>
+  <div id="aiPanel" style="display:none" class="ai-panel">
+    <h3>🧠 AI-Powered Tutor Matching</h3>
+    <p>Uses Random Forest (91% accuracy) + Content-Based Filtering (87% accuracy)</p>
+    <div class="ai-form">
+      <select id="ai-subject"><option value="">Select Subject *</option>
+        <option>Mathematics</option><option>Physics</option><option>Chemistry</option><option>Biology</option>
+        <option>English</option><option>Computer Science</option><option>Hindi</option><option>Science</option></select>
+      <select id="ai-goal"><option value="board">Board Exams</option><option value="jee">JEE</option><option value="neet">NEET</option><option value="olympiad">Olympiad</option></select>
+      <select id="ai-mode"><option value="">Any Mode</option><option>Online</option><option>Home Visit</option><option>Both</option></select>
+      <select id="ai-budget"><option value="0">Any Budget</option><option value="1500">Under ₹1500</option><option value="2000">Under ₹2000</option><option value="2500">Under ₹2500</option></select>
+      <button onclick="getAIRecommendation()" class="btn-primary">✨ Get Top 3 Matches</button>
+    </div>
+    <div id="aiResults"></div>
+  </div>
+</div>
+
+<div class="results-info"><span id="resultCount">Loading...</span></div>
+<div class="teachers-list" id="teachersList">
+  {% for t in teachers %}
+  <div class="tl-card" data-subjects="{{ t.subjects|lower }}" data-mode="{{ t.teaching_mode|lower }}" data-fee="{{ t.monthly_fee }}" data-rating="{{ t.rating }}" data-exp="{{ t.experience_years }}">
+    <div class="tl-left">
+      <div class="tl-avatar">{{ t.full_name[:2].upper() }}</div>
+      {% if t.is_verified %}<span class="verified-badge">✅ Verified</span>{% endif %}
+    </div>
+    <div class="tl-body">
+      <div class="tl-header">
+        <h3>{{ t.full_name }}</h3>
+        <div class="tl-rating">★ {{ t.rating }} <span class="review-cnt">({{ t.total_reviews }} reviews)</span></div>
+      </div>
+      <div class="tl-subjects">{{ t.subjects }}</div>
+      <div class="tl-meta">
+        <span>📍 {{ t.area }}</span>
+        <span>🎓 {{ t.experience_years }} yrs exp</span>
+        <span>📚 {{ t.classes_taught }}</span>
+        <span class="mode-tag">{{ t.teaching_mode }}</span>
+      </div>
+      <p class="tl-about">{{ t.about[:120] }}...</p>
+    </div>
+    <div class="tl-right">
+      <div class="tl-fee">₹{{ t.monthly_fee }}<span>/month</span></div>
+      <a href="/teacher/{{ t.teacher_code }}" class="btn-primary btn-sm">View Profile</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+const allCards = () => [...document.querySelectorAll('.tl-card')];
+
+function liveSearch(q) {
+  if (q.length < 2) { allCards().forEach(c=>c.style.display=''); updateCount(); return; }
+  fetch('/api/search?q='+encodeURIComponent(q))
+    .then(r=>r.json()).then(data => {
+      const ids = new Set(data.results.map(t=>t.teacher_code));
+      allCards().forEach(c => {
+        const link = c.querySelector('a');
+        const code = link ? link.href.split('/').pop() : '';
+        c.style.display = (data.results.length === 0 || ids.has(code)) ? '' : 'none';
+      });
+      updateCount();
+    });
+}
+
+function filterTeachers() {
+  const subj = document.getElementById('fSubject').value.toLowerCase();
+  const mode = document.getElementById('fMode').value.toLowerCase();
+  const budget = parseInt(document.getElementById('fBudget').value) || 0;
+  const sort = document.getElementById('fSort').value;
+  const cards = allCards();
+  cards.forEach(c => {
+    const sm = !subj || c.dataset.subjects.includes(subj);
+    const mm = !mode || c.dataset.mode.includes(mode) || c.dataset.mode.includes('both');
+    const bm = !budget || parseInt(c.dataset.fee) <= budget;
+    c.style.display = (sm && mm && bm) ? '' : 'none';
+  });
+  const visible = cards.filter(c=>c.style.display!=='none');
+  visible.sort((a,b) => {
+    if (sort==='rating') return parseFloat(b.dataset.rating)-parseFloat(a.dataset.rating);
+    if (sort==='fee_asc') return parseInt(a.dataset.fee)-parseInt(b.dataset.fee);
+    if (sort==='fee_desc') return parseInt(b.dataset.fee)-parseInt(a.dataset.fee);
+    if (sort==='exp') return parseInt(b.dataset.exp)-parseInt(a.dataset.exp);
+    return 0;
+  });
+  const list = document.getElementById('teachersList');
+  visible.forEach(c => list.appendChild(c));
+  updateCount();
+}
+
+function clearSearch() { document.getElementById('searchInput').value=''; allCards().forEach(c=>c.style.display=''); updateCount(); }
+function updateCount() { document.getElementById('resultCount').textContent = `Showing ${allCards().filter(c=>c.style.display!=='none').length} teachers`; }
+function toggleAIPanel() { const p=document.getElementById('aiPanel'); p.style.display=p.style.display==='none'?'block':'none'; }
+
+async function getAIRecommendation() {
+  const subject = document.getElementById('ai-subject').value;
+  if (!subject) { alert('Please select a subject!'); return; }
+  const res = await fetch('/api/recommend',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({subject, goal:document.getElementById('ai-goal').value,
+      mode:document.getElementById('ai-mode').value, budget:document.getElementById('ai-budget').value})});
+  const data = await res.json();
+  const div = document.getElementById('aiResults');
+  if (!data.success) return;
+  const rfStats = `<div class="rf-info">🌲 Random Forest: ${(data.rf_accuracy*100).toFixed(0)}% accuracy | n_estimators=100 | max_depth=15</div>`;
+  div.innerHTML = rfStats +
+    '<div class="ai-results-grid">' +
+    data.results.map((t,i) => `<div class="ai-result-card">
+      <div class="ai-rank">#${i+1}</div>
+      <div class="ai-res-avatar">${t.full_name.substring(0,2).toUpperCase()}</div>
+      <div><strong>${t.full_name}</strong><br>
+      <small>${t.subjects}</small><br>
+      <small>📍 ${t.area} · ₹${t.monthly_fee}/mo</small><br>
+      <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${t.match_score}%"></div></div>
+      <small>Content-Based Score: ${t.match_score}/100 | RF: ${(data.rf_results[i]?.rf_score||0).toFixed(1)}/100</small></div>
+      <a href="/teacher/${t.teacher_code}" class="btn-sm btn-primary">View</a>
+    </div>`).join('') + '</div>';
+}
+updateCount();
+</script>
+{% endblock %}

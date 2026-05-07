@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-page">
+  <div class="dash-header">
+    <h1>👨‍🎓 Student Portal</h1>
+    <p>Welcome, {{ session.get('name','Student') }}!</p>
+  </div>
+
+  {% if not student %}
+  <div class="empty-state">
+    <h2>Profile Not Set Up Yet</h2>
+    <p>Your account is created. Please contact admin to set up your student profile and assign a teacher.</p>
+    <a href="/" class="btn-primary">Go to Home</a>
+  </div>
+  {% else %}
+
+  <div class="dash-stats">
+    <div class="stat-card"><div class="stat-num">{{ att_pct }}%</div><div class="stat-label">Attendance</div></div>
+    <div class="stat-card"><div class="stat-num">{{ tests|length }}</div><div class="stat-label">Tests Taken</div></div>
+    <div class="stat-card"><div class="stat-num">{% if tests %}{{ tests[0].percentage|round|int }}%{% else %}N/A{% endif %}</div><div class="stat-label">Last Test Score</div></div>
+    <div class="stat-card"><div class="stat-num">{{ student.class_studying }}</div><div class="stat-label">Class</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card">
+      <h3>👤 My Profile</h3>
+      <div class="details-grid">
+        <div><label>Name</label><span>{{ student.full_name }}</span></div>
+        <div><label>Class</label><span>{{ student.class_studying }} ({{ student.board }})</span></div>
+        <div><label>Area</label><span>{{ student.area }}</span></div>
+        <div><label>Subjects</label><span>{{ student.subjects_needed }}</span></div>
+        <div><label>Parent</label><span>{{ student.parent_name }}</span></div>
+        <div><label>Fee/Month</label><span>₹{{ student.fee_per_month }}</span></div>
+      </div>
+    </div>
+
+    {% if teacher %}
+    <div class="dash-card">
+      <h3>👨‍🏫 My Teacher</h3>
+      <div class="teacher-mini">
+        <div class="mini-avatar">{{ teacher.full_name[:2].upper() }}</div>
+        <div>
+          <strong>{{ teacher.full_name }}</strong>
+          <div>{{ teacher.subjects }}</div>
+          <div>📞 {{ teacher.phone }}</div>
+          <div>★ {{ teacher.rating }}</div>
+        </div>
+      </div>
+      <a href="/teacher/{{ teacher.teacher_code }}" class="btn-sm btn-primary" style="margin-top:8px">View Full Profile</a>
+    </div>
+    {% endif %}
+
+    <div class="dash-card">
+      <h3>📊 Attendance</h3>
+      <div class="att-circle-wrap">
+        <svg viewBox="0 0 100 100" class="att-circle">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#eee" stroke-width="10"/>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#534AB7" stroke-width="10"
+            stroke-dasharray="{{ att_pct * 2.51 }} 251" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="att-pct">{{ att_pct }}%</div>
+      </div>
+      <p style="text-align:center;color:var(--text-muted);font-size:13px">
+        {{ attendance.present }}/{{ attendance.total }} classes attended
+      </p>
+    </div>
+  </div>
+
+  <div class="dash-card full-width">
+    <h3>🤖 AI Performance Prediction <span class="badge-rf">Random Forest Ensemble</span></h3>
+    <p style="font-size:13px;color:var(--text-muted)">Enter past test scores to predict your next score using our Ensemble model (R²=0.89)</p>
+    <div class="predict-form">
+      <select id="pred-subject">
+        <option>Mathematics</option><option>Physics</option><option>Chemistry</option>
+        <option>Biology</option><option>English</option><option>Science</option>
+      </select>
+      <div class="scores-row">
+        <input type="number" class="score-in" placeholder="Test 1" min="0" max="100">
+        <input type="number" class="score-in" placeholder="Test 2" min="0" max="100">
+        <input type="number" class="score-in" placeholder="Test 3" min="0" max="100">
+        <input type="number" class="score-in" placeholder="Test 4" min="0" max="100">
+        <input type="number" class="score-in" placeholder="Test 5" min="0" max="100">
+      </div>
+      <button onclick="predictScore({{ student.id }})" class="btn-primary">🔮 Predict Next Score</button>
+    </div>
+    <div id="predResult"></div>
+  </div>
+
+  <div class="dash-card full-width">
+    <h3>📝 Test Results</h3>
+    <table class="data-table">
+      <thead><tr><th>Subject</th><th>Date</th><th>Marks</th><th>Percentage</th><th>Grade</th></tr></thead>
+      <tbody>
+        {% for t in tests %}
+        <tr>
+          <td>{{ t.subject }}</td>
+          <td>{{ t.test_date }}</td>
+          <td>{{ t.marks_obtained }}/{{ t.total_marks }}</td>
+          <td><div class="pct-bar"><div class="pct-fill" style="width:{{ t.percentage }}%"></div><span>{{ t.percentage }}%</span></div></td>
+          <td><span class="grade-badge grade-{{ t.grade|replace('+','p') }}">{{ t.grade }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dash-card full-width">
+    <h3>💳 Payment History</h3>
+    <table class="data-table">
+      <thead><tr><th>Month</th><th>Year</th><th>Amount</th><th>Status</th><th>Paid Date</th></tr></thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>{{ p.month }}</td><td>{{ p.year }}</td><td>₹{{ p.amount }}</td>
+          <td><span class="status-badge status-{{ p.status|lower }}">{{ p.status }}</span></td>
+          <td>{{ p.paid_date or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+async function predictScore(studentId) {
+  const inputs = [...document.querySelectorAll('.score-in')].map(i=>i.value).filter(v=>v!=='');
+  if (inputs.length < 2) { alert('Enter at least 2 test scores!'); return; }
+  const res = await fetch('/api/predict',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({scores:inputs.map(Number), subject:document.getElementById('pred-subject').value, student_id:studentId})});
+  const d = await res.json();
+  if (!d.success) return;
+  const trendColor = d.trend==='improving'?'#0C6B3B':d.trend==='declining'?'#B84A2B':'#534AB7';
+  document.getElementById('predResult').innerHTML = `
+    <div class="pred-result-box">
+      <div class="pred-main">
+        <div class="pred-score">${d.predicted}<span>/100</span></div>
+        <div class="pred-grade">Grade: ${d.predicted_grade}</div>
+        <div class="pred-trend" style="color:${trendColor}">📈 Trend: ${d.trend.toUpperCase()}</div>
+      </div>
+      <div class="pred-stats">
+        <div><label>Average</label><span>${d.average}</span></div>
+        <div><label>Highest</label><span>${d.highest}</span></div>
+        <div><label>R² Score</label><span>${d.r_squared}</span></div>
+        <div><label>RMSE</label><span>±${d.rmse}</span></div>
+        <div><label>Confidence</label><span>${d.confidence}%</span></div>
+      </div>
+      <div class="pred-forecast">
+        <strong>3-Test Forecast:</strong>
+        ${d.forecast.map(f=>`<span class="fore-chip">${f.step}: ${f.predicted}</span>`).join('')}
+      </div>
+    </div>`;
+}
+</script>
+{% endblock %}

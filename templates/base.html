@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GuruKhoj - AI Tutor Finder Dehradun</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="/" class="nav-brand">🎓 Guru<span class="accent">Khoj</span></a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/our-teachers">Our Teachers</a>
+      {% if session.get('role') == 'admin' %}<a href="/admin">Admin</a>
+      {% elif session.get('role') == 'teacher' %}<a href="/teacher-dashboard">Dashboard</a>
+      {% elif session.get('role') == 'student' %}<a href="/student-portal">My Portal</a>{% endif %}
+    </div>
+    <div class="nav-right">
+      <button onclick="toggleTheme()" class="theme-btn">🌙</button>
+      {% if session.get('user_id') %}
+        <span class="nav-name">👤 {{ session.get('name','').split()[0] }}</span>
+        <a href="/logout" class="btn-sm btn-outline">Logout</a>
+      {% else %}
+        <a href="/login" class="btn-sm btn-outline">Login</a>
+        <a href="/register" class="btn-sm btn-primary">Sign Up</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+<main>{% block content %}{% endblock %}</main>
+<div class="chatbot" id="chatbot">
+  <div class="chat-head" onclick="toggleChat()">🤖 EduBot AI <span id="chatArrow">▲</span></div>
+  <div class="chat-body" id="chatBody">
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="msg bot">Hi! I'm EduBot 👋 Ask me about tutors, fees, subjects or areas in Dehradun!</div>
+    </div>
+    <div class="chat-in">
+      <input id="chatIn" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+<footer>
+  <p>© 2026 GuruKhoj | AI-Powered Home Tutor Finder | Dehradun</p>
+  <p>Developed by <strong>Umang Shaily</strong> (2401296) | Graphic Era Hill University</p>
+</footer>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

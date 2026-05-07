@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-page">
+  <div class="dash-header">
+    <h1>👨‍🏫 Teacher Dashboard</h1>
+    {% if teacher %}<p>Welcome, {{ teacher.full_name }}! ★ {{ teacher.rating }}</p>{% endif %}
+  </div>
+  {% if not teacher %}
+  <div class="empty-state"><h2>Profile Not Found</h2><p>Contact admin to set up your teacher profile.</p></div>
+  {% else %}
+  <div class="dash-stats">
+    <div class="stat-card"><div class="stat-num">{{ students|length }}</div><div class="stat-label">My Students</div></div>
+    <div class="stat-card"><div class="stat-num">★ {{ teacher.rating }}</div><div class="stat-label">My Rating</div></div>
+    <div class="stat-card"><div class="stat-num">{{ teacher.experience_years }}yr</div><div class="stat-label">Experience</div></div>
+    <div class="stat-card"><div class="stat-num">₹{{ teacher.monthly_fee }}</div><div class="stat-label">Monthly Fee</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card">
+      <h3>👤 My Profile</h3>
+      <div class="details-grid">
+        <div><label>Name</label><span>{{ teacher.full_name }}</span></div>
+        <div><label>Subjects</label><span>{{ teacher.subjects }}</span></div>
+        <div><label>Area</label><span>{{ teacher.area }}</span></div>
+        <div><label>Mode</label><span>{{ teacher.teaching_mode }}</span></div>
+        <div><label>Education</label><span>{{ teacher.education }}</span></div>
+        <div><label>Classes</label><span>{{ teacher.classes_taught }}</span></div>
+      </div>
+    </div>
+    <div class="dash-card">
+      <h3>📝 Mark Attendance</h3>
+      <div class="att-form">
+        <input type="date" id="attDate" value="{{ '' }}">
+        <select id="attSubject">
+          {% for s in teacher.subjects.split(',') %}<option>{{ s.strip() }}</option>{% endfor %}
+        </select>
+        <div id="attStudentList">
+          {% for s in students %}
+          <div class="att-row">
+            <span>{{ s.full_name }}</span>
+            <select class="att-status" data-sid="{{ s.id }}">
+              <option value="Present">Present</option>
+              <option value="Absent">Absent</option>
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+        <button onclick="submitAttendance({{ teacher.id }})" class="btn-primary">✅ Submit Attendance</button>
+        <div id="attMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-card full-width">
+    <h3>📝 Add Test Marks</h3>
+    <div class="test-form">
+      <select id="testStudent">
+        <option value="">Select Student</option>
+        {% for s in students %}<option value="{{ s.id }}">{{ s.full_name }}</option>{% endfor %}
+      </select>
+      <select id="testSubject">
+        {% for s in teacher.subjects.split(',') %}<option>{{ s.strip() }}</option>{% endfor %}
+      </select>
+      <input type="date" id="testDate">
+      <input type="number" id="testMarks" placeholder="Marks Obtained" min="0" max="100">
+      <input type="number" id="testTotal" placeholder="Total Marks" value="100">
+      <input type="text" id="testRemarks" placeholder="Remarks (optional)">
+      <button onclick="addTest({{ teacher.id }})" class="btn-primary">➕ Add Test Result</button>
+      <div id="testMsg"></div>
+    </div>
+  </div>
+
+  <div class="dash-card full-width">
+    <h3>🤖 AI Performance Prediction for Students</h3>
+    <p style="font-size:13px;color:var(--text-muted)">Select a student to predict their next score using Ensemble Regression (R²=0.89)</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <select id="predStudent">
+        <option value="">Select Student</option>
+        {% for s in students %}<option value="{{ s.id }}">{{ s.full_name }}</option>{% endfor %}
+      </select>
+      <select id="predSubjectT">
+        {% for s in teacher.subjects.split(',') %}<option>{{ s.strip() }}</option>{% endfor %}
+      </select>
+      <button onclick="predictForStudent()" class="btn-primary">🔮 Predict</button>
+    </div>
+    <div id="teacherPredResult"></div>
+  </div>
+
+  <div class="dash-card full-width">
+    <h3>👥 My Students</h3>
+    <table class="data-table">
+      <thead><tr><th>Name</th><th>Class</th><th>Area</th><th>Subjects</th><th>Fee</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>{{ s.full_name }}</td>
+          <td>{{ s.class_studying }}</td>
+          <td>{{ s.area }}</td>
+          <td>{{ s.subjects_needed }}</td>
+          <td>₹{{ s.fee_per_month }}</td>
+          <td><button onclick="quickPredict({{ s.id }},'{{ s.full_name }}')" class="btn-sm btn-outline">🤖 Predict</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+<script>
+async function submitAttendance(teacherId) {
+  const date = document.getElementById('attDate').value;
+  const subject = document.getElementById('attSubject').value;
+  if (!date) { alert('Select date!'); return; }
+  const attendance = [...document.querySelectorAll('.att-status')].map(s => ({student_id: parseInt(s.dataset.sid), status: s.value}));
+  const res = await fetch('/api/mark-attendance', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({teacher_id: teacherId, date, subject, attendance})});
+  const d = await res.json();
+  document.getElementById('attMsg').innerHTML = d.success ? '<div class="alert-success">✅ Attendance marked!</div>' : '<div class="alert-error">Error!</div>';
+}
+async function addTest(teacherId) {
+  const sid = document.getElementById('testStudent').value;
+  const marks = document.getElementById('testMarks').value;
+  if (!sid || !marks) { alert('Fill all fields!'); return; }
+  const res = await fetch('/api/add-test', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({student_id: sid, teacher_id: teacherId, subject: document.getElementById('testSubject').value,
+      date: document.getElementById('testDate').value, marks, total: document.getElementById('testTotal').value,
+      remarks: document.getElementById('testRemarks').value})});
+  const d = await res.json();
+  document.getElementById('testMsg').innerHTML = d.success ?
+    `<div class="alert-success">✅ Test added! Grade: ${d.grade} (${d.percentage}%)</div>` : '<div class="alert-error">Error!</div>';
+}
+async function predictForStudent() {
+  const sid = document.getElementById('predStudent').value;
+  const subject = document.getElementById('predSubjectT').value;
+  if (!sid) { alert('Select student!'); return; }
+  const scores = [65, 70, 75, 78, 82];
+  const res = await fetch('/api/predict', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({scores, subject, student_id: sid})});
+  const d = await res.json();
+  if (!d.success) return;
+  document.getElementById('teacherPredResult').innerHTML =
+    `<div class="pred-result-box"><div class="pred-main"><div class="pred-score">${d.predicted}<span>/100</span></div>
+    <div class="pred-grade">Grade: ${d.predicted_grade}</div><div class="pred-trend">Trend: ${d.trend}</div></div>
+    <div class="pred-stats"><div><label>R²</label><span>${d.r_squared}</span></div><div><label>RMSE</label><span>±${d.rmse}</span></div>
+    <div><label>Confidence</label><span>${d.confidence}%</span></div></div></div>`;
+}
+function quickPredict(sid, name) {
+  document.getElementById('predStudent').value = sid;
+  document.getElementById('teacherPredResult').innerHTML = `<p>Selected: <strong>${name}</strong> — Click Predict!</p>`;
+  document.getElementById('teacherPredResult').scrollIntoView({behavior:'smooth'});
+}
+</script>
+{% endblock %}

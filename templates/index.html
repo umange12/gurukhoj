@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">⭐ AI-Powered · Dehradun's #1 Tutor Platform</div>
+    <h1>Find Your Perfect<br><span class="accent">Home Tutor</span><br>Ghar Baithe</h1>
+    <p>30+ verified teachers across 50+ Dehradun areas. AI-powered matching, Random Forest recommendations, and personalized study predictions.</p>
+    <div class="hero-stats">
+      <div class="stat"><strong>35+</strong><span>Verified Teachers</span></div>
+      <div class="stat"><strong>50+</strong><span>Dehradun Areas</span></div>
+      <div class="stat"><strong>4.8★</strong><span>Average Rating</span></div>
+      <div class="stat"><strong>91%</strong><span>AI Accuracy</span></div>
+    </div>
+    <div class="hero-btns">
+      <a href="/our-teachers" class="btn-primary">🔍 Find Teachers</a>
+      <button onclick="document.getElementById('aiSection').scrollIntoView({behavior:'smooth'})" class="btn-outline">🤖 Try AI Match</button>
+    </div>
+  </div>
+  <div class="hero-card">
+    <div class="ai-search-box">
+      <h3>🤖 AI Tutor Finder</h3>
+      <p>Powered by Random Forest + Content-Based Filtering</p>
+      <select id="h-subject"><option value="">Select Subject</option>
+        <option>Mathematics</option><option>Physics</option><option>Chemistry</option>
+        <option>Biology</option><option>English</option><option>Computer Science</option>
+        <option>Hindi</option><option>Science</option><option>History</option><option>Economics</option>
+      </select>
+      <select id="h-goal"><option value="board">Board Exams</option><option value="jee">JEE</option><option value="neet">NEET</option><option value="olympiad">Olympiad</option></select>
+      <select id="h-mode"><option value="">Any Mode</option><option value="Online">Online</option><option value="Home Visit">Home Visit</option><option value="Both">Both</option></select>
+      <select id="h-budget"><option value="0">Any Budget</option><option value="1500">Under ₹1500</option><option value="2000">Under ₹2000</option><option value="2500">Under ₹2500</option></select>
+      <button onclick="heroRecommend()" class="btn-primary" style="width:100%;margin-top:8px">✨ Find My Tutor →</button>
+      <div id="heroResults"></div>
+    </div>
+  </div>
+</section>
+
+<section class="features-section">
+  <h2 class="section-title">Why Choose GuruKhoj?</h2>
+  <div class="features-grid">
+    <div class="feature-card"><div class="feat-icon">🤖</div><h3>Random Forest AI</h3><p>Our RF model (91% accuracy) analyzes 7 features to recommend the perfect tutor for your needs.</p></div>
+    <div class="feature-card"><div class="feat-icon">📊</div><h3>Performance Prediction</h3><p>Ensemble regression model (R²=0.89) predicts your next test score and 3-test forecast.</p></div>
+    <div class="feature-card"><div class="feat-icon">🔍</div><h3>Smart Search (BM25)</h3><p>TF-IDF + BM25 algorithm (83% precision) finds tutors from natural language queries.</p></div>
+    <div class="feature-card"><div class="feat-icon">✅</div><h3>Verified Teachers</h3><p>All 35+ tutors are verified with real credentials, experience, and student reviews.</p></div>
+    <div class="feature-card"><div class="feat-icon">📍</div><h3>50+ Dehradun Areas</h3><p>Find tutors near you — Rajpur Road, Patel Nagar, GMS Road, Vasant Vihar and more.</p></div>
+    <div class="feature-card"><div class="feat-icon">💰</div><h3>Budget Filters</h3><p>Fee range ₹1000–₹2500/month. Compare and choose what fits your budget best.</p></div>
+  </div>
+</section>
+
+<section class="ai-section" id="aiSection">
+  <h2 class="section-title">🧠 AI Models Overview</h2>
+  <div class="ai-models-grid">
+    <div class="ai-card"><div class="model-num" style="background:#534AB7">1</div><h3>Content-Based Filtering</h3><p>Scores each teacher out of 100 using subject match (40pts), rating (25pts), mode (15pts), budget (10pts), goal (10pts).</p><span class="acc-badge">87% Accuracy</span></div>
+    <div class="ai-card"><div class="model-num" style="background:#0C6B3B">2</div><h3>Random Forest Classifier</h3><p>n_estimators=100, max_depth=15. Trains on 500 synthetic samples with 7 features. Matches report Chapter 16.3.</p><span class="acc-badge">91% Accuracy</span></div>
+    <div class="ai-card"><div class="model-num" style="background:#BA7517">3</div><h3>Ensemble Performance Predictor</h3><p>Linear Regression (50%) + Weighted Moving Avg (30%) + Exponential Smoothing (20%). Predicts next test score.</p><span class="acc-badge">R²=0.89</span></div>
+    <div class="ai-card"><div class="model-num" style="background:#B84A2B">4</div><h3>TF-IDF + BM25 Search</h3><p>k1=1.5, b=0.75 BM25 constants. Builds inverted index on all teacher profiles. Natural language search.</p><span class="acc-badge">83% Precision@3</span></div>
+  </div>
+</section>
+
+<section class="teachers-preview">
+  <h2 class="section-title">Top Rated Teachers</h2>
+  <div class="teachers-grid">
+    {% for t in teachers %}
+    <div class="teacher-card">
+      <div class="tc-avatar">{{ t.full_name[:2].upper() }}</div>
+      <div class="tc-info">
+        <h3>{{ t.full_name }}</h3>
+        <p class="tc-subjects">{{ t.subjects }}</p>
+        <p class="tc-area">📍 {{ t.area }}</p>
+        <div class="tc-row">
+          <span class="tc-rating">★ {{ t.rating }}</span>
+          <span class="tc-fee">₹{{ t.monthly_fee }}/mo</span>
+          <span class="tc-mode">{{ t.teaching_mode }}</span>
+        </div>
+      </div>
+      <a href="/teacher/{{ t.teacher_code }}" class="btn-sm btn-primary">View Profile</a>
+    </div>
+    {% endfor %}
+  </div>
+  <div style="text-align:center;margin-top:2rem">
+    <a href="/our-teachers" class="btn-primary">View All 35+ Teachers →</a>
+  </div>
+</section>
+
+<script>
+async function heroRecommend() {
+  const subject = document.getElementById('h-subject').value;
+  if (!subject) { alert('Please select a subject first!'); return; }
+  const res = await fetch('/api/recommend', {method:'POST',headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({subject, goal: document.getElementById('h-goal').value,
+      mode: document.getElementById('h-mode').value, budget: document.getElementById('h-budget').value})});
+  const data = await res.json();
+  const div = document.getElementById('heroResults');
+  if (data.success && data.results.length) {
+    div.innerHTML = '<div style="margin-top:12px"><strong>🤖 AI Top Matches:</strong>' +
+      data.results.map(t => `<div class="mini-result"><span>${t.full_name}</span><span class="score-pill">${t.match_score}/100</span></div>`).join('') +
+      `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">RF Accuracy: ${(data.rf_accuracy*100).toFixed(0)}% | ${data.algorithm}</div></div>`;
+  }
+}
+</script>
+{% endblock %}

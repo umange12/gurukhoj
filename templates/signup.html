@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Sign Up – GuruKhoj</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<style>
+body{min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(ellipse at 70% 30%,rgba(6,182,212,0.09) 0%,transparent 55%),radial-gradient(ellipse at 20% 70%,rgba(99,102,241,0.10) 0%,transparent 55%),var(--bg)}
+.auth-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+.auth-card{width:100%;max-width:460px;background:var(--card2);border:1px solid var(--border2);border-radius:24px;padding:36px;box-shadow:var(--shadow-lg)}
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+.role-card{border:2px solid var(--border2);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:.2s;background:none}
+.role-card:hover{border-color:var(--border);background:rgba(99,102,241,.05)}
+.role-card.selected{border-color:var(--purple);background:rgba(99,102,241,.1)}
+.role-card .emoji{font-size:26px;display:block;margin-bottom:6px}
+.role-card .label{font-size:12px;font-weight:700;color:var(--text)}
+.role-card .desc{font-size:10px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/" class="brand" style="text-decoration:none">
+    <div class="brand-logo">📚</div>
+    <div><div class="brand-name">GuruKhoj</div><div class="brand-tag">AI Tutor Platform</div></div>
+  </a>
+  <button class="theme-toggle" onclick="toggleTheme()"><span id="themeIcon">☀️</span></button>
+</div>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div style="text-align:center;margin-bottom:26px">
+      <span style="font-size:44px;display:block;margin-bottom:10px">🚀</span>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--purple-l),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Create Your Account</h1>
+      <p style="font-size:13px;color:var(--muted);margin-top:4px">Join GuruKhoj's AI-powered tutor platform</p>
+    </div>
+    <div style="font-size:12px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">I am a...</div>
+    <div class="role-cards">
+      <button class="role-card selected" onclick="selectRole('student',this)">
+        <span class="emoji">🎓</span><div class="label">Student</div><div class="desc">I want to find a tutor</div>
+      </button>
+      <button class="role-card" onclick="selectRole('teacher',this)">
+        <span class="emoji">👩‍🏫</span><div class="label">Teacher</div><div class="desc">I want to teach students</div>
+      </button>
+    </div>
+    <input type="hidden" id="role" value="student">
+    <div class="form-group"><label>Full Name *</label><input type="text" id="name" placeholder="Enter your full name"></div>
+    <div class="form-group"><label>Email Address *</label><input type="email" id="email" placeholder="your@email.com"></div>
+    <div class="form-group">
+      <label>Password *</label>
+      <div style="position:relative">
+        <input type="password" id="password" placeholder="Minimum 6 characters" style="padding-right:44px">
+        <button onclick="document.getElementById('password').type=document.getElementById('password').type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted)">👁️</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.6">By signing up, you agree to GuruKhoj's Terms of Service. Your account will be reviewed by the admin before activation.</div>
+    <button class="btn btn-purple w-full" style="justify-content:center;font-size:14px;padding:13px" onclick="doSignup()">Create Account →</button>
+    <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted)">Already have an account? <a href="/login" style="color:var(--purple-l);font-weight:700">Sign In</a></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/static/js/main.js"></script>
+<script>
+function selectRole(role,btn){document.querySelectorAll('.role-card').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');document.getElementById('role').value=role}
+async function doSignup(){
+  const name=document.getElementById('name').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const role=document.getElementById('role').value;
+  if(!name||!email||!password){showToast('Please fill all fields','error');return}
+  if(password.length<6){showToast('Password must be at least 6 characters','error');return}
+  const btn=event.target;btn.textContent='⏳ Creating account...';btn.disabled=true;
+  try{
+    const r=await fetch('/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password,role})});
+    const d=await r.json();
+    if(d.success){showToast('Account created! Redirecting to login...','success');setTimeout(()=>window.location.href='/login',1200)}
+    else{showToast(d.error||'Signup failed','error');btn.textContent='Create Account →';btn.disabled=false}
+  }catch(e){showToast('Connection error','error');btn.textContent='Create Account →';btn.disabled=false}
+}
+</script>
+</body></html>

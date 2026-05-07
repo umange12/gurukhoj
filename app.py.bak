@@ -1,0 +1,584 @@
+"""
+GuruKhoj - AI-Powered Home Tutor Finder System
+Student: Umang Shaily | Roll: 2401296
+Graphic Era Hill University, Dehradun
+"""
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import sqlite3, hashlib, os, json
+from ml.ai_engine import TutorRecommender, PerformancePredictor, SmartSearchRanker, EduBotNLP, RandomForestRecommender
+
+app = Flask(__name__)
+app.secret_key = "gurukkhoj_2024_secure_umang"
+DB = "gurukkhoj.db"
+
+# ── DB helpers ────────────────────────────────────────────────────────────────
+def get_db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def sha256(txt):
+    return hashlib.sha256(txt.encode()).hexdigest()
+
+def init_db():
+    conn = get_db()
+    c = conn.cursor()
+    c.executescript("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        full_name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'student',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS teachers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_code TEXT UNIQUE,
+        full_name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT,
+        subjects TEXT,
+        area TEXT,
+        city TEXT DEFAULT 'Dehradun',
+        teaching_mode TEXT DEFAULT 'Both',
+        monthly_fee INTEGER DEFAULT 1500,
+        experience_years INTEGER DEFAULT 2,
+        education TEXT,
+        about TEXT,
+        rating REAL DEFAULT 4.5,
+        total_reviews INTEGER DEFAULT 0,
+        classes_taught TEXT DEFAULT 'Class 6-12',
+        is_available INTEGER DEFAULT 1,
+        is_verified INTEGER DEFAULT 1,
+        photo TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS students (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        full_name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT,
+        parent_name TEXT,
+        parent_phone TEXT,
+        class_studying TEXT,
+        board TEXT DEFAULT 'CBSE',
+        area TEXT,
+        subjects_needed TEXT,
+        assigned_teacher_id INTEGER DEFAULT 0,
+        fee_per_month INTEGER DEFAULT 0,
+        join_date TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS tests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER,
+        teacher_id INTEGER,
+        subject TEXT,
+        test_date TEXT,
+        marks_obtained INTEGER,
+        total_marks INTEGER DEFAULT 100,
+        percentage REAL,
+        grade TEXT,
+        remarks TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER,
+        teacher_id INTEGER,
+        date TEXT,
+        status TEXT DEFAULT 'Present',
+        subject TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER,
+        teacher_id INTEGER,
+        amount INTEGER,
+        month TEXT,
+        year INTEGER,
+        status TEXT DEFAULT 'Pending',
+        paid_date TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS teacher_ratings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id INTEGER,
+        student_id INTEGER,
+        rating INTEGER,
+        review TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS ai_predictions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER,
+        subject TEXT,
+        input_scores TEXT,
+        predicted_score REAL,
+        trend TEXT,
+        confidence REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS rf_recommendations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        subject TEXT,
+        goal TEXT,
+        mode TEXT,
+        budget INTEGER,
+        recommended_teachers TEXT,
+        rf_accuracy REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS notices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        content TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    conn.commit()
+
+    # Check if data already seeded
+    if c.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:
+        conn.close()
+        return
+
+    # ── Seed admin ──
+    c.execute("INSERT INTO users (full_name, email, password, role) VALUES (?,?,?,?)",
+              ("Admin GuruKhoj", "admin@gurukhoj.com", sha256("admin123"), "admin"))
+
+    # ── Seed 30+ teachers across 50+ Dehradun areas ──
+    teachers = [
+        ("T001","Dr. Priya Sharma","priya@gurukhoj.com","9876543201","Mathematics,Physics","Rajpur Road","Both",2500,8,"IIT Roorkee B.Tech","IIT Roorkee JEE specialist with 8 years experience. Expert in Calculus, Mechanics, and Optics.",4.9,245,"Class 9-12"),
+        ("T002","Mr. Rahul Verma","rahul@gurukhoj.com","9876543202","Chemistry,Biology","Patel Nagar","Home Visit",2000,5,"MSc Chemistry HNBGU","NEET specialist. Strong command over Organic Chemistry and Biology for medical entrance.",4.7,189,"Class 11-12"),
+        ("T003","Ms. Anjali Singh","anjali@gurukhoj.com","9876543203","English,Hindi","Clement Town","Online",1500,10,"MA English Literature Delhi Univ","Spoken English, grammar, writing skills. Hindi literature and board exam preparation.",4.8,312,"Class 6-12"),
+        ("T004","Mr. Vikash Negi","vikash@gurukhoj.com","9876543204","Computer Science,Mathematics","Dalanwala","Both",2000,4,"B.Tech CSE GEHU","Python, Java, C++, Data Structures. CBSE board and competitive programming.",4.6,156,"Class 9-12"),
+        ("T005","Mrs. Sunita Rawat","sunita@gurukhoj.com","9876543205","Science,Mathematics","ISBT","Home Visit",1200,6,"BSc HNBGU","Primary and middle school specialist. Patient teaching style for slow learners.",4.5,98,"Class 1-8"),
+        ("T006","Mr. Deepak Joshi","deepak@gurukhoj.com","9876543206","History,Geography,Political Science","Race Course","Online",1500,7,"MA History Delhi Univ","UPSC and board exam preparation. Strong in social sciences and current affairs.",4.7,134,"Class 9-12"),
+        ("T007","Ms. Kavita Bisht","kavita@gurukhoj.com","9876543207","Mathematics,Economics","Rajpur Road","Home Visit",1500,3,"MCom Graphic Era","Commerce and economics for Class 11-12. Accounts, business studies, statistics.",4.4,67,"Class 11-12"),
+        ("T008","Mr. Amit Rawat","amit@gurukhoj.com","9876543208","Physics,Mathematics","Nehru Colony","Both",2500,9,"IIT Delhi B.Tech","IIT JEE Advanced specialist. 9 years coaching experience. 50+ IIT selections.",4.9,278,"Class 11-12"),
+        ("T009","Ms. Pooja Arora","pooja@gurukhoj.com","9876543209","English,Social Science","Turner Road","Online",1500,5,"MA English HNBGU","Creative writing, comprehension, literature. Social science for boards.",4.5,112,"Class 6-10"),
+        ("T010","Mr. Sanjay Kumar","sanjay@gurukhoj.com","9876543210","Chemistry,Biology,Science","Karanpur","Home Visit",2000,6,"MSc Zoology","Biology specialist for NEET. Anatomy, physiology, genetics explained visually.",4.8,201,"Class 9-12"),
+        ("T011","Ms. Reena Chauhan","reena@gurukhoj.com","9876543211","Hindi,Sanskrit","Ballupur","Home Visit",1200,8,"MA Sanskrit HNB Garhwal Univ","Sanskrit grammar and literature. Hindi poetry and prose for board exams.",4.5,89,"Class 6-12"),
+        ("T012","Mr. Rohit Thakur","rohit@gurukhoj.com","9876543212","Mathematics,Physics","Vasant Vihar","Both",2200,5,"B.Tech NIT Uttarakhand","Engineering entrance coaching. Strong foundation building approach.",4.6,143,"Class 9-12"),
+        ("T013","Mrs. Geeta Negi","geeta@gurukhoj.com","9876543213","Science,Mathematics,Social Science","Canal Road","Home Visit",1500,15,"MSc Government PG College","15 years experience. Specializes in helping slow learners build confidence.",4.7,421,"Class 1-10"),
+        ("T014","Mr. Harish Dimri","harish@gurukhoj.com","9876543214","Computer Science,Python,Web Dev","GMS Road","Online",2000,4,"MCA Graphic Era Hill Univ","Web development, Python, SQL, networking for BCA/MCA students.",4.6,78,"Class 11-12, BCA/MCA"),
+        ("T015","Ms. Prerna Nautiyal","prerna@gurukhoj.com","9876543215","Biology,Chemistry","Saharanpur Road","Home Visit",1800,3,"BSc Biotechnology","NEET Biology specialist. Diagrams and mnemonics based teaching.",4.5,56,"Class 11-12"),
+        ("T016","Mr. Suresh Panwar","suresh@gurukhoj.com","9876543216","Mathematics,Statistics","Jakhan","Both",2000,11,"MSc Mathematics","Statistics for Class 11-12 commerce and science. Probability and calculus.",4.8,234,"Class 9-12"),
+        ("T017","Ms. Meena Bora","meena@gurukhoj.com","9876543217","English,French","Curzon Road","Online",1800,7,"MA French JNU","CBSE French and English. Communication skills and grammar for boards.",4.6,145,"Class 6-12"),
+        ("T018","Mr. Pankaj Rana","pankaj@gurukhoj.com","9876543218","Physics,Science","Adhoiwala","Both",1700,5,"BSc Physics HNB Garhwal","Physics concepts made easy. Lab practicals and numericals coaching.",4.5,98,"Class 9-12"),
+        ("T019","Mrs. Nisha Bisht","nisha@gurukhoj.com","9876543219","Mathematics,Accountancy","Badripur","Home Visit",1500,9,"BCom CA (Inter)","Accountancy and commerce for Class 11-12. CA foundation preparation.",4.7,167,"Class 11-12"),
+        ("T020","Mr. Gaurav Semwal","gaurav@gurukhoj.com","9876543220","Chemistry,Physics,Maths","Sewla Kalan","Both",2300,7,"B.Tech Chemical Engg","PCM package for JEE. Integrated coaching with doubt clearing sessions.",4.8,189,"Class 11-12"),
+        ("T021","Ms. Sapna Dobhal","sapna@gurukhoj.com","9876543221","Hindi,Social Science","Brahampuri","Home Visit",1200,6,"BA Education","Primary education specialist. Fun learning methods for young children.",4.4,76,"Class 1-8"),
+        ("T022","Mr. Tarun Aswal","tarun@gurukhoj.com","9876543222","Computer Science,IT","Chakrata Road","Online",1800,5,"BCA GEHU","Computer applications, MS Office, Tally, basic programming for Class 11-12.",4.5,89,"Class 11-12"),
+        ("T023","Mrs. Lata Kandpal","lata@gurukhoj.com","9876543223","Science,EVS","Kaulagarh Road","Home Visit",1300,12,"BSc Biology","EVS and science for primary. Nature-based teaching with experiments.",4.6,156,"Class 1-8"),
+        ("T024","Mr. Dinesh Bhatt","dinesh@gurukhoj.com","9876543224","History,Political Science,Geography","Haridwar Road","Both",1500,8,"MA Political Science","Social sciences for boards. Essay writing and map work specialization.",4.5,112,"Class 9-12"),
+        ("T025","Ms. Ritu Arya","ritu@gurukhoj.com","9876543225","Mathematics,Physics","Old Survey Road","Both",2000,6,"B.Tech Electronics","Engineering maths and physics. Circuit theory and electronics basics.",4.7,134,"Class 9-12"),
+        ("T026","Mr. Vinod Chamoli","vinod@gurukhoj.com","9876543226","Biology,Chemistry","Majra","Home Visit",1600,4,"BSc PCB HNBGU","NEET preparation. Systematic revision and MCQ practice sessions.",4.5,67,"Class 11-12"),
+        ("T027","Ms. Anita Gusain","anita@gurukhoj.com","9876543227","English,Communication Skills","Rispana Road","Online",1400,9,"MA English Lucknow Univ","IELTS/TOEFL preparation. Business English and interview preparation.",4.7,198,"Class 9-12, Graduates"),
+        ("T028","Mr. Mahesh Semwal","mahesh@gurukhoj.com","9876543228","Mathematics,Science","Dehradun Cantonment","Both",1600,7,"B.Ed Mathematics","Teaching methodology expert. NTSE and Olympiad preparation.",4.6,143,"Class 6-10"),
+        ("T029","Mrs. Sheela Thapliyal","sheela@gurukhoj.com","9876543229","Home Science,Drawing","EC Road","Home Visit",1000,15,"BA Fine Arts","Home science, art and craft for boards. Portfolio development.",4.4,89,"Class 9-12"),
+        ("T030","Mr. Arun Gairola","arun@gurukhoj.com","9876543230","Physics,Chemistry,Maths","Doiwala","Both",1800,8,"B.Tech NIT Allahabad","PCM coaching with weekly tests. Result-oriented teaching for JEE/NEET.",4.8,212,"Class 11-12"),
+        ("T031","Ms. Deepa Jugran","deepa@gurukhoj.com","9876543231","Economics,Business Studies","Raipur","Online",1500,5,"MBA Finance Graphic Era","Commerce stream coaching. Business studies and economics for Class 11-12.",4.5,78,"Class 11-12"),
+        ("T032","Mr. Kamal Uniyal","kamal@gurukhoj.com","9876543232","Computer Science,Mathematics","Pondha","Both",1700,6,"MCA DIT Univ","Programming languages, algorithms, data structures for Class 11-12.",4.6,112,"Class 9-12"),
+        ("T033","Mrs. Pushpa Kukreti","pushpa@gurukhoj.com","9876543233","Hindi,Sanskrit,Social Science","Mothrowala","Home Visit",1100,20,"MA Hindi HNBGU","20 years experience. Hindi and Sanskrit board toppers coaching.",4.8,345,"Class 6-12"),
+        ("T034","Mr. Rajesh Negi","rajesh@gurukhoj.com","9876543234","Mathematics,Physics","Rajpur Dehradun","Both",2100,10,"B.Tech IIT BHU","10 years IIT coaching. Comprehensive JEE Advanced preparation.",4.9,267,"Class 11-12"),
+        ("T035","Ms. Shanti Panwar","shanti@gurukhoj.com","9876543235","Biology,Science,EVS","Shimla Bypass","Home Visit",1300,7,"MSc Botany","Botany and zoology specialist. NEET and board exam biology.",4.6,134,"Class 9-12"),
+    ]
+    for t in teachers:
+        c.execute("""INSERT INTO teachers (teacher_code,full_name,email,phone,subjects,area,teaching_mode,
+                  monthly_fee,experience_years,education,about,rating,total_reviews,classes_taught)
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", t)
+
+    # ── Seed users for teachers ──
+    for t in teachers:
+        c.execute("INSERT OR IGNORE INTO users (full_name, email, password, role) VALUES (?,?,?,?)",
+                  (t[1], t[2], sha256("teacher123"), "teacher"))
+
+    # ── Seed 30 students ──
+    students_data = [
+        ("Arjun Sharma","arjun@student.com","9811111101","Rakesh Sharma","9811111100","Class 11","CBSE","Rajpur Road","Mathematics,Physics",1,2500),
+        ("Priya Mehta","priya.s@student.com","9811111102","Suresh Mehta","9811111103","Class 12","CBSE","Patel Nagar","Chemistry,Biology",2,2000),
+        ("Rahul Singh","rahul.s@student.com","9811111104","Anil Singh","9811111105","Class 10","CBSE","Clement Town","English,Mathematics",3,1500),
+        ("Sneha Rawat","sneha@student.com","9811111106","Mohan Rawat","9811111107","Class 9","CBSE","Dalanwala","Science,Social Science",4,2000),
+        ("Amit Kumar","amit.k@student.com","9811111108","Vijay Kumar","9811111109","Class 8","CBSE","ISBT","Mathematics,Science",5,1200),
+        ("Pooja Bisht","pooja.b@student.com","9811111110","Dinesh Bisht","9811111111","Class 12","CBSE","Race Course","History,Political Science",6,1500),
+        ("Vishal Negi","vishal@student.com","9811111112","Bhupesh Negi","9811111113","Class 11","CBSE","Rajpur Road","Mathematics,Economics",7,1500),
+        ("Kavya Thakur","kavya@student.com","9811111114","Ramesh Thakur","9811111115","Class 10","CBSE","Nehru Colony","Mathematics,Physics",8,2500),
+        ("Rohit Joshi","rohit.j@student.com","9811111116","Prakash Joshi","9811111117","Class 9","CBSE","Turner Road","English,Hindi",9,1500),
+        ("Ananya Rana","ananya@student.com","9811111118","Sunil Rana","9811111119","Class 12","CBSE","Karanpur","Biology,Chemistry",10,2000),
+        ("Deepak Chauhan","deepak.c@student.com","9811111120","Jagdish Chauhan","9811111121","Class 7","CBSE","Ballupur","Mathematics,Science",11,1200),
+        ("Riya Bhatt","riya@student.com","9811111122","Harish Bhatt","9811111123","Class 11","CBSE","Vasant Vihar","Physics,Mathematics",12,2200),
+        ("Tushar Rawat","tushar@student.com","9811111124","Govind Rawat","9811111125","Class 6","CBSE","Canal Road","Hindi,English",13,1500),
+        ("Nidhi Semwal","nidhi@student.com","9811111126","Girish Semwal","9811111127","Class 12","CBSE","GMS Road","Computer Science",14,2000),
+        ("Ayush Dimri","ayush@student.com","9811111128","Bharat Dimri","9811111129","Class 11","CBSE","Saharanpur Road","Chemistry,Biology",15,1800),
+        ("Simran Kaur","simran@student.com","9811111130","Gurpreet Kaur","9811111131","Class 10","CBSE","Jakhan","Mathematics,Science",16,2000),
+        ("Akash Panwar","akash@student.com","9811111132","Rajendra Panwar","9811111133","Class 9","CBSE","Curzon Road","English,French",17,1800),
+        ("Manisha Bora","manisha@student.com","9811111134","Chandra Bora","9811111135","Class 8","CBSE","Adhoiwala","Mathematics,Hindi",18,1700),
+        ("Saurabh Bisht","saurabh@student.com","9811111136","Devendra Bisht","9811111137","Class 12","CBSE","Badripur","Accountancy,Mathematics",19,1500),
+        ("Priyanka Negi","priyanka@student.com","9811111138","Lalit Negi","9811111139","Class 11","CBSE","Sewla Kalan","Chemistry,Physics",20,2300),
+        ("Harsh Dobhal","harsh@student.com","9811111140","Kedar Dobhal","9811111141","Class 5","CBSE","Brahampuri","Hindi,Mathematics",21,1200),
+        ("Ishita Aswal","ishita@student.com","9811111142","Sanjeev Aswal","9811111143","Class 12","CBSE","Chakrata Road","Computer Science,IT",22,1800),
+        ("Shivam Kandpal","shivam@student.com","9811111144","Mukesh Kandpal","9811111145","Class 4","CBSE","Kaulagarh Road","Science,EVS",23,1300),
+        ("Divya Bhatt","divya@student.com","9811111146","Trilochan Bhatt","9811111147","Class 10","CBSE","Haridwar Road","History,Geography",24,1500),
+        ("Nikhil Arya","nikhil@student.com","9811111148","Suresh Arya","9811111149","Class 11","CBSE","Old Survey Road","Mathematics,Physics",25,2000),
+        ("Sakshi Chamoli","sakshi@student.com","9811111150","Vinay Chamoli","9811111151","Class 12","CBSE","Majra","Biology,Chemistry",26,1600),
+        ("Tanmay Gusain","tanmay@student.com","9811111152","Prem Gusain","9811111153","Class 9","CBSE","Rispana Road","English,Science",27,1400),
+        ("Prachi Semwal","prachi@student.com","9811111154","Naveen Semwal","9811111155","Class 10","CBSE","Dehradun Cantonment","Mathematics,Science",28,1600),
+        ("Gaurav Thapliyal","gaurav.t@student.com","9811111156","Ramesh Thapliyal","9811111157","Class 12","CBSE","EC Road","Home Science",29,1000),
+        ("Ritika Gairola","ritika@student.com","9811111158","Avinash Gairola","9811111159","Class 11","CBSE","Doiwala","Physics,Chemistry",30,1800),
+    ]
+    for i, s in enumerate(students_data, 1):
+        # Create user account
+        email = s[1]
+        c.execute("INSERT OR IGNORE INTO users (full_name, email, password, role) VALUES (?,?,?,?)",
+                  (s[0], email, sha256("student123"), "student"))
+        uid = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        uid = uid[0] if uid else i
+        c.execute("""INSERT INTO students (user_id,full_name,email,phone,parent_name,parent_phone,
+                  class_studying,board,area,subjects_needed,assigned_teacher_id,fee_per_month,join_date)
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,date('now','-'||?||' months'))""",
+                  (uid, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], str(i % 6)))
+
+    # ── Seed some test scores ──
+    subjects_for_tests = ["Mathematics","Physics","Chemistry","Biology","English"]
+    scores_patterns = [
+        [60,65,70,75,78],[72,70,74,78,82],[55,60,58,65,70],
+        [80,82,85,83,88],[45,50,55,60,65],[90,88,92,91,94],
+    ]
+    import random
+    random.seed(42)
+    for sid in range(1, 31):
+        subj = subjects_for_tests[sid % 5]
+        pattern = scores_patterns[sid % 6]
+        for i, marks in enumerate(pattern):
+            marks = min(100, marks + random.randint(-3, 3))
+            pct = round(marks, 1)
+            grade = "A+" if marks>=90 else "A" if marks>=80 else "B+" if marks>=70 else "B" if marks>=60 else "C"
+            c.execute("""INSERT INTO tests (student_id,teacher_id,subject,test_date,marks_obtained,
+                      total_marks,percentage,grade) VALUES (?,?,?,date('now','-'||?||' days'),?,100,?,?)""",
+                      (sid, (sid%10)+1, subj, str((5-i)*15), marks, pct, grade))
+
+    # ── Seed attendance ──
+    for sid in range(1, 31):
+        for d in range(20):
+            status = "Present" if random.random() > 0.15 else "Absent"
+            c.execute("""INSERT INTO attendance (student_id,teacher_id,date,status,subject)
+                      VALUES (?,?,date('now','-'||?||' days'),?,?)""",
+                      (sid, (sid%10)+1, str(d), status, subjects_for_tests[sid%5]))
+
+    # ── Seed payments ──
+    months = ["January","February","March","April"]
+    for sid in range(1, 31):
+        for m in months[:2]:
+            c.execute("""INSERT INTO payments (student_id,teacher_id,amount,month,year,status,paid_date)
+                      VALUES (?,?,?,?,2026,'Paid',date('now','-30 days'))""",
+                      (sid, (sid%10)+1, students_data[sid-1][10], m))
+        c.execute("""INSERT INTO payments (student_id,teacher_id,amount,month,year,status)
+                  VALUES (?,?,?,?,2026,'Pending')""",
+                  (sid, (sid%10)+1, students_data[sid-1][10], "May"))
+
+    conn.commit()
+    conn.close()
+    print("✅ Database initialized with 35 teachers, 30 students, test data!")
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+@app.route("/")
+def index():
+    teachers = []
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute(
+        "SELECT * FROM teachers WHERE is_available=1 ORDER BY rating DESC LIMIT 6").fetchall()]
+    conn.close()
+    return render_template("index.html", teachers=teachers)
+
+@app.route("/login", methods=["GET","POST"])
+def login():
+    if request.method == "POST":
+        data = request.get_json() or request.form
+        email = data.get("email","").strip()
+        password = sha256(data.get("password",""))
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email=? AND password=?",
+                            (email, password)).fetchone()
+        conn.close()
+        if user:
+            session["user_id"] = user["id"]
+            session["email"] = user["email"]
+            session["role"] = user["role"]
+            session["name"] = user["full_name"]
+            if request.is_json:
+                return jsonify({"success": True, "role": user["role"], "name": user["full_name"]})
+            if user["role"] == "admin": return redirect("/admin")
+            if user["role"] == "teacher": return redirect("/teacher-dashboard")
+            return redirect("/student-portal")
+        if request.is_json:
+            return jsonify({"success": False, "message": "Invalid credentials"})
+        return render_template("login.html", error="Invalid email or password")
+    return render_template("login.html")
+
+@app.route("/register", methods=["GET","POST"])
+def register():
+    if request.method == "POST":
+        data = request.get_json() or request.form
+        name = data.get("full_name","").strip()
+        email = data.get("email","").strip()
+        password = sha256(data.get("password",""))
+        try:
+            conn = get_db()
+            conn.execute("INSERT INTO users (full_name,email,password,role) VALUES (?,?,?,'student')",
+                         (name, email, password))
+            conn.commit()
+            conn.close()
+            if request.is_json:
+                return jsonify({"success": True})
+            return redirect("/login")
+        except:
+            if request.is_json:
+                return jsonify({"success": False, "message": "Email already exists"})
+            return render_template("register.html", error="Email already registered")
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
+
+# ── Teachers ──────────────────────────────────────────────────────────────────
+@app.route("/our-teachers")
+def our_teachers():
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute(
+        "SELECT * FROM teachers WHERE is_available=1 ORDER BY rating DESC").fetchall()]
+    conn.close()
+    return render_template("our_teachers.html", teachers=teachers)
+
+@app.route("/teacher/<code>")
+def teacher_profile(code):
+    conn = get_db()
+    t = conn.execute("SELECT * FROM teachers WHERE teacher_code=?", (code,)).fetchone()
+    reviews = conn.execute("""SELECT tr.*, s.full_name as student_name
+                           FROM teacher_ratings tr JOIN students s ON tr.student_id=s.id
+                           WHERE tr.teacher_id=? ORDER BY tr.created_at DESC LIMIT 10""",
+                           (t["id"],)).fetchall() if t else []
+    conn.close()
+    if not t: return redirect("/our-teachers")
+    return render_template("teacher_profile.html", teacher=dict(t),
+                           reviews=[dict(r) for r in reviews])
+
+# ── AI APIs ───────────────────────────────────────────────────────────────────
+@app.route("/api/recommend", methods=["POST"])
+def api_recommend():
+    d = request.get_json()
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute("SELECT * FROM teachers WHERE is_available=1").fetchall()]
+    conn.close()
+    rec = TutorRecommender(teachers)
+    rf_rec = RandomForestRecommender(teachers)
+    results = rec.recommend(d.get("subject",""), d.get("goal","board"), d.get("mode",""), int(d.get("budget",0)))
+    rf_results = rf_rec.recommend(d.get("subject",""), d.get("goal","board"), d.get("mode",""), int(d.get("budget",0)))
+    return jsonify({"success": True, "results": results, "rf_results": rf_results,
+                    "rf_accuracy": rf_rec.accuracy, "algorithm": "Content-Based + Random Forest Ensemble"})
+
+@app.route("/api/search")
+def api_search():
+    q = request.args.get("q","")
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute("SELECT * FROM teachers WHERE is_available=1").fetchall()]
+    conn.close()
+    ranker = SmartSearchRanker(teachers)
+    results = ranker.search(q)
+    return jsonify({"success": True, "results": results[:8]})
+
+@app.route("/api/chatbot", methods=["POST"])
+def api_chatbot():
+    msg = request.get_json().get("message","")
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute("SELECT * FROM teachers ORDER BY rating DESC").fetchall()]
+    conn.close()
+    bot = EduBotNLP(teachers)
+    return jsonify({"success": True, "response": bot.respond(msg)})
+
+@app.route("/api/predict", methods=["POST"])
+def api_predict():
+    d = request.get_json()
+    scores = [float(x) for x in d.get("scores",[]) if x != ""]
+    if not scores:
+        return jsonify({"success": False, "message": "No scores provided"})
+    pp = PerformancePredictor()
+    result = pp.predict_next(scores)
+    if "user_id" in session and d.get("student_id"):
+        conn = get_db()
+        conn.execute("""INSERT INTO ai_predictions (student_id,subject,input_scores,predicted_score,trend,confidence)
+                     VALUES (?,?,?,?,?,?)""",
+                     (d["student_id"], d.get("subject","General"), json.dumps(scores),
+                      result["predicted"], result["trend"], result["confidence"]))
+        conn.commit()
+        conn.close()
+    return jsonify({"success": True, **result})
+
+@app.route("/api/rf-model-stats")
+def rf_model_stats():
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute("SELECT * FROM teachers").fetchall()]
+    conn.close()
+    rf = RandomForestRecommender(teachers)
+    return jsonify(rf.get_model_stats())
+
+# ── Student Portal ────────────────────────────────────────────────────────────
+@app.route("/student-portal")
+def student_portal():
+    if session.get("role") not in ["student","admin"]:
+        return redirect("/login")
+    conn = get_db()
+    student = conn.execute("SELECT * FROM students WHERE user_id=?",
+                           (session["user_id"],)).fetchone()
+    if not student:
+        conn.close()
+        return render_template("student_portal.html", student=None)
+    s = dict(student)
+    tests = [dict(r) for r in conn.execute(
+        "SELECT * FROM tests WHERE student_id=? ORDER BY test_date DESC LIMIT 20", (s["id"],)).fetchall()]
+    attendance = conn.execute("""SELECT COUNT(*) as total,
+                              SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END) as present
+                              FROM attendance WHERE student_id=?""", (s["id"],)).fetchone()
+    payments = [dict(r) for r in conn.execute(
+        "SELECT * FROM payments WHERE student_id=? ORDER BY created_at DESC LIMIT 6", (s["id"],)).fetchall()]
+    teacher = None
+    if s["assigned_teacher_id"]:
+        t = conn.execute("SELECT * FROM teachers WHERE id=?", (s["assigned_teacher_id"],)).fetchone()
+        if t: teacher = dict(t)
+    conn.close()
+    att_pct = round((attendance["present"]/attendance["total"])*100) if attendance["total"] else 0
+    return render_template("student_portal.html", student=s, tests=tests, attendance=attendance,
+                           att_pct=att_pct, payments=payments, teacher=teacher)
+
+# ── Teacher Dashboard ─────────────────────────────────────────────────────────
+@app.route("/teacher-dashboard")
+def teacher_dashboard():
+    if session.get("role") not in ["teacher","admin"]:
+        return redirect("/login")
+    conn = get_db()
+    teacher = conn.execute("SELECT * FROM teachers WHERE email=?",
+                           (session.get("email"),)).fetchone()
+    if not teacher:
+        conn.close()
+        return render_template("teacher_dashboard.html", teacher=None, students=[])
+    t = dict(teacher)
+    students = [dict(r) for r in conn.execute(
+        "SELECT * FROM students WHERE assigned_teacher_id=? AND is_active=1", (t["id"],)).fetchall()]
+    conn.close()
+    return render_template("teacher_dashboard.html", teacher=t, students=students)
+
+@app.route("/api/add-test", methods=["POST"])
+def add_test():
+    if session.get("role") not in ["teacher","admin"]:
+        return jsonify({"success": False})
+    d = request.get_json()
+    conn = get_db()
+    marks = int(d.get("marks",0))
+    total = int(d.get("total",100))
+    pct = round((marks/total)*100, 1)
+    grade = "A+" if pct>=90 else "A" if pct>=80 else "B+" if pct>=70 else "B" if pct>=60 else "C"
+    conn.execute("""INSERT INTO tests (student_id,teacher_id,subject,test_date,marks_obtained,total_marks,percentage,grade,remarks)
+                 VALUES (?,?,?,?,?,?,?,?,?)""",
+                 (d["student_id"], d["teacher_id"], d["subject"], d["date"], marks, total, pct, grade, d.get("remarks","")))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "grade": grade, "percentage": pct})
+
+@app.route("/api/mark-attendance", methods=["POST"])
+def mark_attendance():
+    if session.get("role") not in ["teacher","admin"]:
+        return jsonify({"success": False})
+    d = request.get_json()
+    conn = get_db()
+    for item in d.get("attendance",[]):
+        conn.execute("""INSERT OR REPLACE INTO attendance (student_id,teacher_id,date,status,subject)
+                     VALUES (?,?,?,?,?)""",
+                     (item["student_id"], d["teacher_id"], d["date"], item["status"], d.get("subject","")))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+@app.route("/admin")
+def admin():
+    if session.get("role") != "admin":
+        return redirect("/login")
+    conn = get_db()
+    teachers = [dict(r) for r in conn.execute("SELECT * FROM teachers ORDER BY id").fetchall()]
+    students = [dict(r) for r in conn.execute("SELECT * FROM students ORDER BY id").fetchall()]
+    stats = {
+        "teachers": conn.execute("SELECT COUNT(*) FROM teachers").fetchone()[0],
+        "students": conn.execute("SELECT COUNT(*) FROM students").fetchone()[0],
+        "pending_payments": conn.execute("SELECT COUNT(*) FROM payments WHERE status='Pending'").fetchone()[0],
+        "tests_today": conn.execute("SELECT COUNT(*) FROM tests WHERE test_date=date('now')").fetchone()[0],
+    }
+    conn.close()
+    return render_template("admin.html", teachers=teachers, students=students, stats=stats)
+
+@app.route("/api/admin/teacher", methods=["POST","PUT","DELETE"])
+def admin_teacher():
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"})
+    d = request.get_json()
+    conn = get_db()
+    if request.method == "POST":
+        code = f"T{conn.execute('SELECT COUNT(*)+100 FROM teachers').fetchone()[0]}"
+        conn.execute("""INSERT INTO teachers (teacher_code,full_name,email,phone,subjects,area,
+                     teaching_mode,monthly_fee,experience_years,education,about)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                     (code, d["full_name"], d["email"], d["phone"], d["subjects"], d["area"],
+                      d.get("mode","Both"), int(d.get("fee",1500)), int(d.get("exp",1)),
+                      d.get("education",""), d.get("about","")))
+        conn.commit(); conn.close()
+        return jsonify({"success": True, "message": "Teacher added!"})
+    if request.method == "DELETE":
+        conn.execute("DELETE FROM teachers WHERE id=?", (d["id"],))
+        conn.commit(); conn.close()
+        return jsonify({"success": True})
+    conn.close()
+    return jsonify({"success": False})
+
+@app.route("/api/admin/update-payment", methods=["POST"])
+def update_payment():
+    if session.get("role") != "admin": return jsonify({"success": False})
+    d = request.get_json()
+    conn = get_db()
+    conn.execute("UPDATE payments SET status='Paid', paid_date=date('now') WHERE id=?", (d["id"],))
+    conn.commit(); conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/rate-teacher", methods=["POST"])
+def rate_teacher():
+    d = request.get_json()
+    conn = get_db()
+    conn.execute("""INSERT OR REPLACE INTO teacher_ratings (teacher_id,student_id,rating,review)
+                 VALUES (?,?,?,?)""",
+                 (d["teacher_id"], d.get("student_id",1), d["rating"], d.get("review","")))
+    avg = conn.execute("SELECT AVG(rating) FROM teacher_ratings WHERE teacher_id=?",
+                       (d["teacher_id"],)).fetchone()[0]
+    cnt = conn.execute("SELECT COUNT(*) FROM teacher_ratings WHERE teacher_id=?",
+                       (d["teacher_id"],)).fetchone()[0]
+    conn.execute("UPDATE teachers SET rating=?, total_reviews=? WHERE id=?",
+                 (round(avg,1), cnt, d["teacher_id"]))
+    conn.commit(); conn.close()
+    return jsonify({"success": True, "new_rating": round(avg,1)})
+
+if __name__ == "__main__":
+    if not os.path.exists(DB):
+        init_db()
+    else:
+        conn = get_db()
+        if conn.execute("SELECT COUNT(*) FROM teachers").fetchone()[0] == 0:
+            conn.close()
+            init_db()
+        else:
+            conn.close()
+    app.run(debug=True, port=5000)

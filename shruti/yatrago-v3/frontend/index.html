@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YatraGo — Smart Travel Reservations</title>
+<style>
+:root{
+  --bg:#060d1a;--bg2:#0b1629;--bg3:#111f35;--card:#0f1c30;
+  --border:#1e3a5f;--border2:#243d63;
+  --accent:#f6a623;--accent2:#ff6b35;--blue:#4fc3f7;--blue2:#0288d1;
+  --green:#43e97b;--red:#ff5252;--purple:#a78bfa;--pink:#f472b6;
+  --white:#f0f8ff;--text2:#8bafc7;--text3:#4a6882;
+  --font:'Inter',system-ui,sans-serif;
+  --radius:16px;--radius-sm:10px;
+  --shadow:0 8px 32px rgba(0,0,0,0.4);
+  --glow:0 0 20px rgba(246,166,35,0.3);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:var(--font);min-height:100vh;overflow-x:hidden;}
+
+/* ── NAVBAR ── */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;backdrop-filter:blur(20px);background:rgba(6,13,26,0.92);border-bottom:1px solid var(--border);padding:0 32px;height:64px;display:flex;align-items:center;gap:24px;}
+.logo{font-size:1.5rem;font-weight:800;color:var(--white);cursor:pointer;display:flex;align-items:center;gap:8px;margin-right:auto;}
+.logo span{color:var(--accent);}
+.logo svg{width:28px;height:28px;}
+.nav-links{display:flex;gap:4px;}
+.nav-btn{background:none;border:none;color:var(--text2);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;transition:.2s;white-space:nowrap;}
+.nav-btn:hover,.nav-btn.active{color:var(--white);background:rgba(79,195,247,0.12);}
+.nav-btn.dsa-btn{color:var(--accent);border:1px solid rgba(246,166,35,0.3);padding:7px 14px;}
+.nav-btn.dsa-btn:hover{background:rgba(246,166,35,0.1);}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.95rem;color:#1a0a00;cursor:pointer;}
+.logout-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:0.82rem;transition:.2s;}
+.logout-btn:hover{border-color:var(--red);color:var(--red);}
+.auth-btns{display:flex;gap:8px;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--white);padding:8px 20px;border-radius:8px;cursor:pointer;font-size:0.88rem;transition:.2s;}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue);}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#1a0a00;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:700;transition:.2s;}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:var(--glow);}
+
+/* ── PAGES ── */
+.page{display:none;padding-top:64px;min-height:100vh;}
+.page.active{display:block;}
+
+/* ── HOME ── */
+.hero{position:relative;min-height:520px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#060d1a 0%,#0a1628 40%,#0d1f3c 70%,#060d1a 100%);}
+.hero-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(79,195,247,0.15) 0%,transparent 60%);}
+.hero-bg::after{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(246,166,35,0.08) 0%,transparent 70%);top:-200px;right:-100px;}
+.hero-content{position:relative;text-align:center;padding:60px 24px 40px;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.25);border-radius:100px;padding:6px 16px;font-size:0.75rem;color:var(--blue);margin-bottom:24px;}
+.hero-badge span{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.hero h1{font-size:clamp(2.2rem,5vw,4rem);font-weight:800;line-height:1.1;margin-bottom:12px;}
+.hero h1 .grad{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero p{color:var(--text2);font-size:1.05rem;margin-bottom:36px;max-width:520px;margin-left:auto;margin-right:auto;}
+
+/* ── SEARCH BOX ── */
+.search-box{background:rgba(11,22,41,0.9);border:1px solid var(--border2);border-radius:20px;padding:24px;max-width:860px;margin:0 auto;backdrop-filter:blur(20px);box-shadow:var(--shadow);}
+.tab-row{display:flex;gap:8px;margin-bottom:20px;}
+.tab-btn{display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:100px;border:1px solid var(--border);background:none;color:var(--text2);font-size:0.85rem;font-weight:600;cursor:pointer;transition:.2s;}
+.tab-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#1a0a00;}
+.tab-btn svg{width:16px;height:16px;}
+.search-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;}
+.search-field{display:flex;flex-direction:column;gap:6px;}
+.search-field label{font-size:0.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;}
+.search-input{width:100%;padding:13px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--white);font-size:0.95rem;outline:none;transition:.2s;}
+.search-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(79,195,247,0.1);}
+.search-input::placeholder{color:var(--text3);}
+.search-btn{padding:13px 32px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:var(--radius-sm);color:#1a0a00;font-size:0.95rem;font-weight:800;cursor:pointer;transition:.2s;white-space:nowrap;}
+.search-btn:hover{transform:translateY(-2px);box-shadow:var(--glow);}
+
+/* ── QUICK ROUTES ── */
+.quick-routes{padding:40px 32px;max-width:1100px;margin:0 auto;}
+.section-title{font-size:1.3rem;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);margin-left:8px;}
+.routes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+.route-chip{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:space-between;}
+.route-chip:hover{border-color:var(--accent);background:rgba(246,166,35,0.05);transform:translateY(-2px);}
+.route-chip .route-txt{font-weight:600;font-size:0.9rem;}
+.route-chip .route-price{font-size:0.78rem;color:var(--accent);}
+.route-chip .route-arrow{color:var(--text3);}
+
+/* ── DSA BADGES (visible in hero) ── */
+.dsa-strip{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 24px 40px;max-width:900px;margin:0 auto;}
+.dsa-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(11,22,41,0.7);border:1px solid var(--border);border-radius:100px;padding:5px 12px;font-size:0.73rem;color:var(--text2);backdrop-filter:blur(10px);}
+.dsa-badge .dot{width:6px;height:6px;border-radius:50%;}
+
+/* ── RESULTS PAGE ── */
+.results-layout{display:grid;grid-template-columns:280px 1fr;gap:24px;padding:24px 32px;max-width:1200px;margin:0 auto;}
+.filter-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;height:fit-content;position:sticky;top:80px;}
+.filter-title{font-weight:700;font-size:1rem;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.filter-section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.filter-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.filter-section-title{font-size:0.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:12px;}
+.filter-input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--white);font-size:0.85rem;outline:none;margin-bottom:8px;}
+.filter-input:focus{border-color:var(--blue);}
+.price-slider{width:100%;accent-color:var(--accent);margin:8px 0;}
+.price-range-row{display:flex;gap:8px;}
+.price-input{flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--white);font-size:0.82rem;outline:none;text-align:center;}
+.class-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.class-chip{padding:5px 12px;border-radius:100px;border:1px solid var(--border);background:none;color:var(--text2);font-size:0.78rem;cursor:pointer;transition:.2s;}
+.class-chip.active{background:var(--blue2);border-color:var(--blue2);color:#fff;}
+.sort-select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--white);font-size:0.85rem;outline:none;}
+.apply-btn{width:100%;padding:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;color:#1a0a00;font-weight:700;cursor:pointer;margin-top:12px;}
+.results-header{margin-bottom:16px;}
+.results-header h2{font-size:1.4rem;font-weight:700;}
+.results-meta{color:var(--text2);font-size:0.85rem;margin-top:4px;display:flex;align-items:center;gap:12px;}
+.dsa-pill{background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.2);border-radius:100px;padding:3px 10px;font-size:0.72rem;color:var(--blue);}
+.results-list{display:flex;flex-direction:column;gap:14px;}
+
+/* ── RESULT CARD ── */
+.result-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;transition:.25s;cursor:pointer;animation:fadeUp .4s ease both;}
+.result-card:hover{border-color:rgba(79,195,247,0.35);box-shadow:0 4px 20px rgba(79,195,247,0.1);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.card-top{display:flex;align-items:center;gap:16px;}
+.airline-logo{width:48px;height:48px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;color:var(--accent);flex-shrink:0;}
+.card-route{flex:1;display:flex;align-items:center;gap:12px;}
+.time-dep,.time-arr{text-align:center;}
+.time-big{font-size:1.35rem;font-weight:800;line-height:1;}
+.time-city{font-size:0.75rem;color:var(--text2);margin-top:3px;}
+.route-mid{flex:1;text-align:center;}
+.route-dur{font-size:0.75rem;color:var(--text3);margin-bottom:4px;}
+.route-line{display:flex;align-items:center;gap:4px;}
+.route-line-bar{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),var(--blue2),var(--border2));}
+.route-stop-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.direct-tag{font-size:0.68rem;color:var(--green);margin-top:3px;}
+.stop-tag{font-size:0.68rem;color:var(--accent);margin-top:3px;}
+.card-prices{margin-left:auto;text-align:right;}
+.price-from{font-size:0.68rem;color:var(--text3);}
+.price-main{font-size:1.5rem;font-weight:800;color:var(--accent);line-height:1;}
+.price-sub{font-size:0.72rem;color:var(--text3);}
+.price-surge{font-size:0.68rem;color:var(--red);margin-top:2px;}
+/* Card classes row */
+.card-classes{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.class-tag{padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:.2s;border:1px solid var(--border);background:var(--bg3);display:flex;flex-direction:column;gap:2px;}
+.class-tag:hover{border-color:var(--accent);}
+.class-tag.selected{border-color:var(--accent);background:rgba(246,166,35,0.1);}
+.class-tag .c-name{color:var(--text2);font-size:0.7rem;text-transform:uppercase;letter-spacing:.05em;}
+.class-tag .c-price{color:var(--white);font-weight:700;}
+.class-tag .c-seats{color:var(--text3);font-size:0.65rem;}
+.class-tag.unavail{opacity:.35;cursor:not-allowed;}
+/* Stops path */
+.stops-path{margin-top:12px;padding:10px 14px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;gap:0;overflow-x:auto;}
+.stop-node{display:flex;flex-direction:column;align-items:center;min-width:70px;}
+.stop-node .s-name{font-size:0.68rem;color:var(--text2);text-align:center;max-width:64px;line-height:1.2;}
+.stop-node .s-dot{width:10px;height:10px;border-radius:50%;background:var(--blue2);border:2px solid var(--blue);margin:4px 0;}
+.stop-node.first .s-dot,.stop-node.last .s-dot{background:var(--accent);border-color:var(--accent);}
+.stop-edge{flex:1;height:2px;background:linear-gradient(90deg,var(--blue2),var(--border));min-width:30px;margin-top:-5px;}
+/* DSA trace in card */
+.dsa-trace{margin-top:10px;padding:8px 12px;background:rgba(79,195,247,0.05);border:1px solid rgba(79,195,247,0.15);border-radius:8px;font-size:0.72rem;color:var(--text2);display:flex;align-items:center;gap:8px;}
+.dsa-trace .algo-tag{background:rgba(79,195,247,0.15);color:var(--blue);padding:2px 8px;border-radius:100px;font-weight:600;white-space:nowrap;}
+/* Card bottom */
+.card-bottom{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tag-chip{padding:4px 10px;border-radius:100px;font-size:0.7rem;font-weight:600;border:1px solid var(--border);color:var(--text2);}
+.tag-chip.green{border-color:rgba(67,233,123,0.3);color:var(--green);}
+.tag-chip.blue{border-color:rgba(79,195,247,0.3);color:var(--blue);}
+.tag-chip.orange{border-color:rgba(246,166,35,0.3);color:var(--accent);}
+.tag-chip.red{border-color:rgba(255,82,82,0.3);color:var(--red);}
+.book-now-btn{margin-left:auto;padding:9px 22px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;color:#1a0a00;font-weight:700;font-size:0.85rem;cursor:pointer;transition:.2s;}
+.book-now-btn:hover{transform:translateY(-1px);box-shadow:var(--glow);}
+/* Priority badge on card */
+.priority-badge{position:absolute;top:14px;right:14px;background:linear-gradient(135deg,var(--purple),var(--pink));border-radius:100px;padding:3px 10px;font-size:0.68rem;font-weight:700;color:#fff;}
+
+/* ── DSA PAGE ── */
+.dsa-page{padding:24px 32px;max-width:1100px;margin:0 auto;}
+.dsa-page-header{text-align:center;padding:40px 0 32px;}
+.dsa-page-header h1{font-size:2.2rem;font-weight:800;margin-bottom:8px;}
+.dsa-page-header p{color:var(--text2);}
+.dsa-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:32px;}
+.dsa-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;transition:.2s;}
+.dsa-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.dsa-card-icon{font-size:1.8rem;margin-bottom:12px;}
+.dsa-card-title{font-weight:700;font-size:1rem;margin-bottom:4px;}
+.dsa-card-sub{font-size:0.78rem;color:var(--text3);margin-bottom:12px;font-family:monospace;}
+.dsa-card-desc{font-size:0.83rem;color:var(--text2);line-height:1.6;margin-bottom:14px;}
+.dsa-card-where{font-size:0.75rem;color:var(--blue);background:rgba(79,195,247,0.08);border-radius:6px;padding:6px 10px;}
+
+/* ── INTERACTIVE DSA SECTION ── */
+.dsa-interactive{margin-bottom:32px;}
+.dsa-interactive h2{font-size:1.2rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.dijkstra-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
+.dijk-inputs{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;margin-bottom:16px;}
+.dijk-field label{font-size:0.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;}
+.dijk-field select,.dijk-field input{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--white);font-size:0.88rem;outline:none;}
+.dijk-btn{padding:10px 22px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;color:#1a0a00;font-weight:700;cursor:pointer;white-space:nowrap;}
+.route-result{padding:16px;background:var(--bg3);border-radius:10px;margin-top:4px;}
+.route-path{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:10px 0;}
+.path-city{background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.2);border-radius:6px;padding:4px 10px;font-size:0.8rem;color:var(--blue);}
+.path-arrow{color:var(--text3);font-size:0.8rem;}
+.route-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.route-tab{padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:none;color:var(--text2);font-size:0.78rem;cursor:pointer;transition:.2s;}
+.route-tab.active{border-color:var(--accent);color:var(--accent);}
+
+/* ── HEAP VISUALIZER ── */
+.heap-viz{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:16px;}
+.heap-title{font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.heap-grid{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.heap-node{width:52px;height:52px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:0.7rem;transition:.3s;border:2px solid;}
+.heap-node.priority-1{background:rgba(255,82,82,0.2);border-color:var(--red);color:var(--red);}
+.heap-node.priority-2{background:rgba(167,139,250,0.2);border-color:var(--purple);color:var(--purple);}
+.heap-node.priority-3{background:rgba(246,166,35,0.2);border-color:var(--accent);color:var(--accent);}
+.heap-node.priority-4{background:rgba(79,195,247,0.2);border-color:var(--blue);color:var(--blue);}
+.heap-node .pn{font-size:0.6rem;opacity:.7;}
+
+/* ── STACK VISUALIZER ── */
+.stack-viz{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
+.stack-items{display:flex;flex-direction:column;gap:4px;margin-top:12px;}
+.stack-item{padding:8px 14px;background:var(--bg3);border-radius:8px;font-size:0.82rem;display:flex;align-items:center;gap:10px;border:1px solid var(--border);transition:.3s;}
+.stack-item.top{border-color:var(--green);background:rgba(67,233,123,0.06);}
+.stack-badge{font-size:0.65rem;padding:2px 8px;border-radius:100px;background:rgba(67,233,123,0.15);color:var(--green);}
+
+/* ── BOOKING MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;}
+.overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:32px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;position:relative;}
+.modal h2{font-size:1.4rem;font-weight:800;margin-bottom:4px;}
+.modal p{color:var(--text2);font-size:0.88rem;margin-bottom:24px;}
+.modal-close{position:absolute;top:16px;right:16px;background:var(--bg3);border:none;color:var(--text2);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;transition:.2s;}
+.modal-close:hover{color:var(--white);}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:0.78rem;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+.form-group input,.form-group select{width:100%;padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--white);font-size:0.92rem;outline:none;transition:.2s;}
+.form-group input:focus,.form-group select:focus{border-color:var(--blue);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.priority-box{background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+.priority-box h4{font-size:0.82rem;color:var(--purple);margin-bottom:8px;font-weight:700;}
+.priority-levels{display:flex;flex-direction:column;gap:6px;}
+.priority-level{display:flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--text2);}
+.priority-level.active{color:var(--white);font-weight:600;}
+.priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.booking-summary-box{background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:16px;}
+.bs-row{display:flex;justify-content:space-between;font-size:0.82rem;padding:4px 0;}
+.bs-row span:first-child{color:var(--text2);}
+.bs-row span:last-child{font-weight:600;}
+.form-submit{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#1a0a00;font-size:1rem;font-weight:800;cursor:pointer;transition:.2s;margin-top:8px;}
+.form-submit:hover{transform:translateY(-1px);box-shadow:var(--glow);}
+.error-box{background:rgba(255,82,82,0.1);border:1px solid rgba(255,82,82,0.3);border-radius:8px;padding:10px 14px;color:var(--red);font-size:0.82rem;margin-bottom:12px;display:none;}
+.error-box.show{display:block;}
+.form-switch{text-align:center;margin-top:16px;font-size:0.85rem;color:var(--text2);}
+.form-switch a{color:var(--blue);cursor:pointer;}
+
+/* ── DASHBOARD ── */
+.dash-header{background:linear-gradient(135deg,var(--bg2),var(--bg3));border-bottom:1px solid var(--border);padding:32px;}
+.dash-header h1{font-size:1.8rem;font-weight:800;}
+.dash-body{padding:24px 32px;max-width:900px;margin:0 auto;}
+.booking-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:14px;animation:fadeUp .3s ease both;position:relative;}
+.booking-type-badge{padding:3px 10px;border-radius:100px;font-size:0.72rem;font-weight:700;}
+.type-flight{background:rgba(79,195,247,0.15);color:var(--blue);}
+.type-train{background:rgba(67,233,123,0.15);color:var(--green);}
+.type-bus{background:rgba(246,166,35,0.15);color:var(--accent);}
+.booking-route{font-size:1.1rem;font-weight:700;margin:8px 0 4px;}
+.booking-meta{font-size:0.82rem;color:var(--text2);}
+.booking-amount{font-size:1.3rem;font-weight:800;color:var(--accent);}
+.booking-seat{background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:4px 10px;font-size:0.75rem;color:var(--purple);}
+.booking-priority{font-size:0.72rem;color:var(--text3);}
+.cancel-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:0.78rem;transition:.2s;}
+.cancel-btn:hover{border-color:var(--red);color:var(--red);}
+.confirmed-tag{padding:3px 10px;border-radius:100px;font-size:0.7rem;background:rgba(67,233,123,0.12);color:var(--green);}
+.cancelled-tag{padding:3px 10px;border-radius:100px;font-size:0.7rem;background:rgba(255,82,82,0.12);color:var(--red);}
+.no-bookings{text-align:center;padding:80px 20px;color:var(--text3);}
+.no-bookings span{font-size:4rem;display:block;margin-bottom:16px;}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:12px 18px;font-size:0.85rem;min-width:280px;animation:slideIn .3s ease;box-shadow:var(--shadow);}
+@keyframes slideIn{from{transform:translateX(120%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.toast.success{border-color:rgba(67,233,123,0.4);color:var(--green);}
+.toast.error{border-color:rgba(255,82,82,0.4);color:var(--red);}
+.toast.info{border-color:rgba(79,195,247,0.4);color:var(--blue);}
+
+/* ── MISC ── */
+.skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px;}
+@keyframes shimmer{to{background-position:-200% 0;}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+.empty-state{text-align:center;padding:80px;color:var(--text3);}
+.empty-state span{font-size:3.5rem;display:block;margin-bottom:16px;}
+.surgeWarn{color:var(--red);font-size:0.7rem;display:flex;align-items:center;gap:4px;}
+
+datalist option{background:var(--bg2);color:var(--white);}
+
+/* Responsive */
+@media(max-width:800px){
+  .search-row{grid-template-columns:1fr 1fr;}
+  .search-btn{grid-column:span 2;}
+  .results-layout{grid-template-columns:1fr;}
+  .filter-panel{position:static;}
+  .dijk-inputs{grid-template-columns:1fr 1fr;}
+  .dijk-btn{grid-column:span 2;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav class="nav">
+  <div class="logo" onclick="showPage('home')">
+    <svg viewBox="0 0 28 28" fill="none"><path d="M4 14L14 4L24 14" stroke="#4fc3f7" stroke-width="2.5" stroke-linecap="round"/><path d="M8 18L14 12L20 18" stroke="#f6a623" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="22" r="2" fill="#f6a623"/></svg>
+    Yatra<span>Go</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-btn active" onclick="showPage('home')">Home</button>
+    <button class="nav-btn" onclick="quickNav('flights')">✈ Flights</button>
+    <button class="nav-btn" onclick="quickNav('trains')">🚂 Trains</button>
+    <button class="nav-btn" onclick="quickNav('buses')">🚌 Buses</button>
+    <button class="nav-btn dsa-btn" onclick="showPage('dsa')">⚙ DSA</button>
+  </div>
+  <div class="nav-right">
+    <div id="nav-auth" class="auth-btns">
+      <button class="btn-outline" onclick="openAuth('login')">Login</button>
+      <button class="btn-primary" onclick="openAuth('signup')">Sign Up</button>
+    </div>
+    <div id="nav-user" style="display:none;align-items:center;gap:10px;display:none;">
+      <div class="avatar" id="nav-avatar" onclick="showPage('dashboard')">U</div>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ HOME PAGE ══ -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <div class="hero-badge"><span></span>8 DSA Algorithms Running Live</div>
+      <h1>India's Smartest<br><span class="grad">Travel Planner</span></h1>
+      <p>Powered by Dijkstra's Algorithm, Priority Queue, Merge Sort & Binary Search — built for real travel, real DSA.</p>
+
+      <div class="search-box">
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="setTab(this,'flights')">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M2 10l2-4 8 2-2 4-8-2z" stroke="currentColor" stroke-width="1.5"/><path d="M10 8l3-2" stroke="currentColor" stroke-width="1.5"/></svg>
+            Flights
+          </button>
+          <button class="tab-btn" onclick="setTab(this,'trains')">
+            <svg viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 14l1-2h2l1 2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h10" stroke="currentColor" stroke-width="1.5"/></svg>
+            Trains
+          </button>
+          <button class="tab-btn" onclick="setTab(this,'buses')">
+            <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 14v-2M11 14v-2" stroke="currentColor" stroke-width="1.5"/><circle cx="5" cy="10" r="1" fill="currentColor"/><circle cx="11" cy="10" r="1" fill="currentColor"/></svg>
+            Buses
+          </button>
+        </div>
+        <div class="search-row">
+          <div class="search-field">
+            <label>From</label>
+            <input class="search-input" id="s-from" list="city-dl" placeholder="Delhi" autocomplete="off" oninput="fetchCities(this)">
+          </div>
+          <div class="search-field">
+            <label>To</label>
+            <input class="search-input" id="s-to" list="city-dl" placeholder="Mumbai" autocomplete="off" oninput="fetchCities(this)">
+          </div>
+          <div class="search-field">
+            <label>Date</label>
+            <input class="search-input" id="s-date" type="date">
+          </div>
+          <button class="search-btn" onclick="doSearch()">Search →</button>
+        </div>
+        <datalist id="city-dl"></datalist>
+      </div>
+    </div>
+  </div>
+
+  <!-- DSA badges -->
+  <div class="dsa-strip">
+    <div class="dsa-badge"><span class="dot" style="background:var(--red)"></span>Min-Heap Priority Queue</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--blue)"></span>Dijkstra's Algorithm</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--green)"></span>Merge Sort</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--accent)"></span>Binary Search</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--purple)"></span>Graph Adj. List</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--pink)"></span>Stack LIFO</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--blue2)"></span>Hash Map</div>
+    <div class="dsa-badge"><span class="dot" style="background:var(--accent2)"></span>Dynamic Pricing</div>
+  </div>
+
+  <!-- Quick Routes -->
+  <div class="quick-routes">
+    <div class="section-title">✈ Popular Routes</div>
+    <div class="routes-grid">
+      <div class="route-chip" onclick="quickSearch('Delhi','Mumbai','flights')"><div><div class="route-txt">Delhi → Mumbai</div><div class="route-price">From ₹2,499</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Delhi','Goa','flights')"><div><div class="route-txt">Delhi → Goa</div><div class="route-price">From ₹3,999</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Mumbai','Bangalore','flights')"><div><div class="route-txt">Mumbai → Bangalore</div><div class="route-price">From ₹2,899</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Delhi','Mumbai','trains')"><div><div class="route-txt">Delhi → Mumbai Train</div><div class="route-price">From ₹500</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Delhi','Jaipur','buses')"><div><div class="route-txt">Delhi → Jaipur Bus</div><div class="route-price">From ₹279</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Chennai','Bangalore','trains')"><div><div class="route-txt">Chennai → Bangalore</div><div class="route-price">From ₹320</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Mumbai','Goa','trains')"><div><div class="route-txt">Mumbai → Goa Train</div><div class="route-price">From ₹580</div></div><span class="route-arrow">→</span></div>
+      <div class="route-chip" onclick="quickSearch('Bangalore','Goa','buses')"><div><div class="route-txt">Bangalore → Goa Bus</div><div class="route-price">From ₹649</div></div><span class="route-arrow">→</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS PAGE ══ -->
+<div class="page" id="page-results">
+  <div class="results-layout">
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+      <div class="filter-title">🎛 Filters</div>
+      <div class="filter-section">
+        <div class="filter-section-title">Budget Range</div>
+        <div class="price-range-row">
+          <input type="number" class="price-input" id="f-min" placeholder="Min ₹" value="0">
+          <input type="number" class="price-input" id="f-max" placeholder="Max ₹" value="30000">
+        </div>
+        <input type="range" class="price-slider" id="f-slider" min="0" max="30000" step="100" value="30000" oninput="document.getElementById('f-max').value=this.value;applyFilters()">
+        <div style="font-size:0.75rem;color:var(--accent);margin-top:4px;">Up to ₹<span id="slider-val">30000</span></div>
+      </div>
+      <div class="filter-section" id="class-filter-section">
+        <div class="filter-section-title">Class</div>
+        <div class="class-chips" id="class-chips"></div>
+      </div>
+      <div class="filter-section" id="bus-type-section" style="display:none;">
+        <div class="filter-section-title">Bus Type</div>
+        <div class="class-chips" id="bus-type-chips">
+          <button class="class-chip active" onclick="setBusType(this,'all')">All</button>
+          <button class="class-chip" onclick="setBusType(this,'Volvo AC')">Volvo AC</button>
+          <button class="class-chip" onclick="setBusType(this,'AC Sleeper')">AC Sleeper</button>
+          <button class="class-chip" onclick="setBusType(this,'AC Seater')">AC Seater</button>
+          <button class="class-chip" onclick="setBusType(this,'Non-AC Sleeper')">Non-AC Sleeper</button>
+          <button class="class-chip" onclick="setBusType(this,'Non-AC Seater')">Non-AC Seater</button>
+          <button class="class-chip" onclick="setBusType(this,'Luxury Sleeper')">Luxury</button>
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-section-title">Sort By</div>
+        <select class="sort-select" id="f-sort" onchange="applyFilters()">
+          <option value="price">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="duration">Fastest First</option>
+          <option value="departure">Earliest Departure</option>
+        </select>
+      </div>
+      <div class="filter-section" id="direct-filter" style="display:none;">
+        <div class="filter-section-title">Stops</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.85rem;color:var(--text2);">
+          <input type="checkbox" id="f-direct" onchange="applyFilters()"> Direct only
+        </label>
+      </div>
+      <!-- DSA info in panel -->
+      <div style="background:rgba(79,195,247,0.05);border:1px solid rgba(79,195,247,0.15);border-radius:8px;padding:10px 12px;margin-top:4px;">
+        <div style="font-size:0.7rem;color:var(--blue);font-weight:700;margin-bottom:4px;">⚙ DSA Running</div>
+        <div style="font-size:0.7rem;color:var(--text3);line-height:1.6;">🔀 Merge Sort on results<br>🔎 Binary Search for price range<br>🗺 HashMap for city lookup</div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div>
+      <div class="results-header">
+        <h2 id="r-title">Search Results</h2>
+        <div class="results-meta">
+          <span id="r-count">0 results</span>
+          <span class="dsa-pill">🔀 Merge Sort applied</span>
+          <span class="dsa-pill">🔎 Binary Search active</span>
+        </div>
+      </div>
+      <div class="results-list" id="results-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DSA PAGE ══ -->
+<div class="page" id="page-dsa">
+  <div class="dsa-page">
+    <div class="dsa-page-header">
+      <h1>⚙ DSA Implementations</h1>
+      <p>All 8 algorithms running live inside this project</p>
+    </div>
+
+    <!-- DSA Cards Grid -->
+    <div class="dsa-cards-grid">
+      <div class="dsa-card">
+        <div class="dsa-card-icon">🏔</div>
+        <div class="dsa-card-title" style="color:var(--red)">Min-Heap (Priority Queue)</div>
+        <div class="dsa-card-sub">O(log n) insert & extract-min</div>
+        <div class="dsa-card-desc">When you book a seat, your passenger profile is scored: Disability=1 (highest), Women 40+=2, Senior 60+=3, General=4. The Min-Heap always extracts the highest priority passenger first, ensuring fair seat assignment.</div>
+        <div class="dsa-card-where">📍 Used in: Seat assignment on every booking + Booking waitlist queue</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">🗺</div>
+        <div class="dsa-card-title" style="color:var(--blue)">Dijkstra's Algorithm</div>
+        <div class="dsa-card-sub">O((V+E) log V) shortest path</div>
+        <div class="dsa-card-desc">City connections are stored as a weighted directed Graph (adjacency list). Dijkstra's uses a Min-Heap internally to always pick the cheapest unvisited city next, finding the cheapest/fastest multi-hop route.</div>
+        <div class="dsa-card-where">📍 Used in: Route Finder below — try Delhi → Goa!</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">🔀</div>
+        <div class="dsa-card-title" style="color:var(--green)">Merge Sort</div>
+        <div class="dsa-card-sub">O(n log n) stable sort</div>
+        <div class="dsa-card-desc">Every search result is sorted using our custom Merge Sort implementation in server.js. It divides the results array in half recursively, sorts each half, then merges them in order. Stable — equal prices maintain original order.</div>
+        <div class="dsa-card-where">📍 Used in: All flight/train/bus search results before response</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">🔎</div>
+        <div class="dsa-card-title" style="color:var(--accent)">Binary Search</div>
+        <div class="dsa-card-sub">O(log n) lower & upper bound</div>
+        <div class="dsa-card-desc">After Merge Sort, the results array is price-sorted. Binary Search finds the lower bound (first item ≥ minPrice) and upper bound (first item > maxPrice) in O(log n) — much faster than O(n) linear scan for price range filter.</div>
+        <div class="dsa-card-where">📍 Used in: Price filter slider on results page</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">📚</div>
+        <div class="dsa-card-title" style="color:var(--purple)">Stack (LIFO)</div>
+        <div class="dsa-card-sub">O(1) push/pop, max 10 items</div>
+        <div class="dsa-card-desc">Every search you do is pushed onto your personal Stack. Newest search = top of stack. Max 10 items — when 11th search comes, oldest is removed (like a circular stack). Duplicates auto-removed before push.</div>
+        <div class="dsa-card-where">📍 Used in: Search history (login + search to see yours)</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">🗂</div>
+        <div class="dsa-card-title" style="color:var(--pink)">Hash Map</div>
+        <div class="dsa-card-sub">O(1) lookup, prefix indexing</div>
+        <div class="dsa-card-desc">200+ city names are stored in a custom HashMap with prefix indexing. When you type "Del", the prefix key "del" maps to ["Delhi"]. Lookup is O(1). No database query needed — all in-memory at server start.</div>
+        <div class="dsa-card-where">📍 Used in: City autocomplete on search inputs</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">🌐</div>
+        <div class="dsa-card-title" style="color:var(--blue2)">Graph (Adjacency List)</div>
+        <div class="dsa-card-sub">O(V+E) space, directed weighted</div>
+        <div class="dsa-card-desc">Cities are graph nodes. Each flight/train/bus route is a directed weighted edge. Three separate graphs exist: flight-graph, train-graph, bus-graph. Dijkstra's runs on each to find transport-specific shortest paths.</div>
+        <div class="dsa-card-where">📍 Used in: Route Finder — city connections from DB</div>
+      </div>
+      <div class="dsa-card">
+        <div class="dsa-card-icon">💰</div>
+        <div class="dsa-card-title" style="color:var(--accent2)">Dynamic Pricing (Greedy)</div>
+        <div class="dsa-card-sub">O(1) — real airline logic</div>
+        <div class="dsa-card-desc">Prices increase as departure approaches (like real airlines). &lt;2hrs = 2.2x, &lt;6hrs = 1.8x, &lt;12hrs = 1.4x, &lt;24hrs = 1.2x. Seats &lt;20% remaining also adds surcharge. Early booking = cheapest price!</div>
+        <div class="dsa-card-where">📍 Used in: All flight/train/bus prices on search results</div>
+      </div>
+    </div>
+
+    <!-- Dijkstra Interactive -->
+    <div class="dsa-interactive">
+      <h2>🗺 Live Dijkstra's Route Finder</h2>
+      <div class="dijkstra-box">
+        <div class="dijk-inputs">
+          <div class="dijk-field">
+            <label>From City</label>
+            <input id="d-from" list="dijk-cities" placeholder="Delhi">
+          </div>
+          <div class="dijk-field">
+            <label>To City</label>
+            <input id="d-to" list="dijk-cities" placeholder="Goa">
+          </div>
+          <div class="dijk-field">
+            <label>Optimize For</label>
+            <select id="d-opt">
+              <option value="price">Cheapest Price</option>
+              <option value="time">Shortest Time</option>
+              <option value="distance">Shortest Distance</option>
+            </select>
+          </div>
+          <button class="dijk-btn" onclick="runDijkstra()">Find Route →</button>
+        </div>
+        <datalist id="dijk-cities">
+          <option value="Delhi"><option value="Mumbai"><option value="Bangalore">
+          <option value="Chennai"><option value="Kolkata"><option value="Goa">
+          <option value="Pune"><option value="Jaipur"><option value="Agra">
+          <option value="Varanasi"><option value="Hyderabad"><option value="Kochi">
+        </datalist>
+        <div id="dijk-result"></div>
+      </div>
+    </div>
+
+    <!-- Priority Queue Heap Visualizer -->
+    <div class="heap-viz">
+      <div class="heap-title">🏔 Priority Queue — Live Seat Assignment Visualizer</div>
+      <p style="font-size:0.82rem;color:var(--text2);margin-bottom:16px;">Add passengers to see Min-Heap order. Top of heap = next seat assigned.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+        <button onclick="addToHeap('Riya',25,'female',false)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(167,139,250,0.3);background:rgba(167,139,250,0.08);color:var(--purple);cursor:pointer;font-size:0.8rem;">+ Add Female 25</button>
+        <button onclick="addToHeap('Ramesh',65,'male',false)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(246,166,35,0.3);background:rgba(246,166,35,0.08);color:var(--accent);cursor:pointer;font-size:0.8rem;">+ Add Senior 65</button>
+        <button onclick="addToHeap('Priya',42,'female',false)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(244,114,182,0.3);background:rgba(244,114,182,0.08);color:var(--pink);cursor:pointer;font-size:0.8rem;">+ Add Women 42</button>
+        <button onclick="addToHeap('Arjun',28,'male',true)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(255,82,82,0.3);background:rgba(255,82,82,0.08);color:var(--red);cursor:pointer;font-size:0.8rem;">+ Add Disability</button>
+        <button onclick="addToHeap('Raj',30,'male',false)" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(79,195,247,0.3);background:rgba(79,195,247,0.08);color:var(--blue);cursor:pointer;font-size:0.8rem;">+ Add General 30</button>
+        <button onclick="extractFromHeap()" style="padding:8px 16px;border-radius:8px;border:1px solid rgba(67,233,123,0.3);background:rgba(67,233,123,0.08);color:var(--green);cursor:pointer;font-size:0.8rem;">Extract Min (Assign Seat)</button>
+        <button onclick="clearHeap()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:0.8rem;">Clear</button>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text3);margin-bottom:12px;">Heap order: <span style="color:var(--red)">♿ Disability(1)</span> › <span style="color:var(--pink)">👩 Women 40+(2)</span> › <span style="color:var(--accent)">👴 Senior 60+(3)</span> › <span style="color:var(--blue)">👤 General(4)</span></div>
+      <div class="heap-grid" id="heap-display"></div>
+      <div id="heap-log" style="margin-top:12px;font-size:0.78rem;color:var(--text2);background:var(--bg3);border-radius:8px;padding:10px;min-height:40px;font-family:monospace;"></div>
+    </div>
+
+    <!-- Stack Visualizer -->
+    <div class="stack-viz">
+      <div class="heap-title">📚 Stack — Your Search History (LIFO)</div>
+      <button onclick="loadStack()" style="padding:8px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-size:0.82rem;margin-bottom:4px;">Load My Stack →</button>
+      <div class="stack-items" id="stack-display"><div style="color:var(--text3);font-size:0.82rem;padding:8px;">Login and search to populate your stack...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD PAGE ══ -->
+<div class="page" id="page-dashboard">
+  <div class="dash-header">
+    <h1 id="dash-name">My Bookings</h1>
+    <div style="color:var(--text2);font-size:0.88rem;margin-top:4px;" id="dash-email"></div>
+  </div>
+  <div class="dash-body" id="dash-body"></div>
+</div>
+
+<!-- ══ AUTH MODAL ══ -->
+<div class="overlay" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAuth()">✕</button>
+    <div id="form-login">
+      <h2>Welcome back 👋</h2>
+      <p>Sign in to your YatraGo account</p>
+      <div class="error-box" id="login-err"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="l-email" placeholder="you@email.com"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+      <button class="form-submit" onclick="doLogin()">Sign In</button>
+      <div class="form-switch">No account? <a onclick="switchAuth('signup')">Create one</a></div>
+    </div>
+    <div id="form-signup" style="display:none;">
+      <h2>Create Account 🚀</h2>
+      <p>Join YatraGo — DSA-powered travel</p>
+      <div class="error-box" id="signup-err"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Full Name</label><input type="text" id="su-name" placeholder="Rahul Sharma"></div>
+        <div class="form-group"><label>Phone</label><input type="tel" id="su-phone" placeholder="+91 98765..."></div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="su-email" placeholder="you@email.com"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Age</label><input type="number" id="su-age" placeholder="25" min="1" max="120"></div>
+        <div class="form-group"><label>Gender</label>
+          <select id="su-gender"><option value="other">Prefer not to say</option><option value="male">Male</option><option value="female">Female</option></select>
+        </div>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" id="su-disability" style="width:auto;accent-color:var(--red);">
+        <label style="margin:0;font-size:0.85rem;color:var(--text2);">♿ Person with disability — Priority 1 seat assignment</label>
+      </div>
+      <div class="form-group"><label>Password</label><input type="password" id="su-pass" placeholder="Min 6 characters"></div>
+      <button class="form-submit" onclick="doSignup()">Create Account</button>
+      <div class="form-switch">Have account? <a onclick="switchAuth('login')">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BOOKING MODAL ══ -->
+<div class="overlay" id="book-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeBook()">✕</button>
+    <h2>Confirm Booking</h2>
+    <p>Priority seat auto-assigned via Min-Heap</p>
+    <div class="booking-summary-box" id="book-summary"></div>
+    <div class="priority-box">
+      <h4>⚙ Priority Queue — Seat Assignment Order</h4>
+      <div class="priority-levels">
+        <div class="priority-level" id="pl-1"><span class="priority-dot" style="background:var(--red)"></span>Priority 1: ♿ Disability — Always first</div>
+        <div class="priority-level" id="pl-2"><span class="priority-dot" style="background:var(--pink)"></span>Priority 2: 👩 Women age 40+ — Second</div>
+        <div class="priority-level" id="pl-3"><span class="priority-dot" style="background:var(--accent)"></span>Priority 3: 👴 Senior age 60+ — Third</div>
+        <div class="priority-level" id="pl-4"><span class="priority-dot" style="background:var(--blue)"></span>Priority 4: 👤 General — Standard</div>
+      </div>
+    </div>
+    <div class="error-box" id="book-err"></div>
+    <div class="form-group"><label>Passenger Name</label><input type="text" id="p-name" placeholder="As on ID card"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Age</label><input type="number" id="p-age" placeholder="25"></div>
+      <div class="form-group"><label>Gender</label>
+        <select id="p-gender" onchange="updatePriorityHighlight()">
+          <option value="other">Other</option><option value="male">Male</option><option value="female">Female (Priority 2 if 40+)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+      <input type="checkbox" id="p-disability" style="width:auto;accent-color:var(--red);" onchange="updatePriorityHighlight()">
+      <label style="margin:0;font-size:0.85rem;color:var(--text2);">♿ Requires disability accommodation — Priority 1 (highest)</label>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Contact Email</label><input type="email" id="p-email"></div>
+      <div class="form-group"><label>Contact Phone</label><input type="tel" id="p-phone"></div>
+    </div>
+    <button class="form-submit" onclick="confirmBooking()">Confirm & Book →</button>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+const API = 'http://localhost:3001/api';
+let currentUser = null;
+let currentType = 'flights';
+let allResults = [];
+let pendingBooking = null;
+let selectedClass = null;
+let selectedBusType = 'all';
+let heapData = [];
+
+// ─── INIT ───────────────────────────────────────────────────
+window.onload = () => {
+  document.getElementById('s-date').min = new Date().toISOString().split('T')[0];
+  const t = localStorage.getItem('yg_token');
+  const u = localStorage.getItem('yg_user');
+  if (t && u) { currentUser = JSON.parse(u); updateNav(); }
+};
+
+// ─── NAVIGATION ─────────────────────────────────────────────
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  window.scrollTo(0,0);
+  if (p === 'dashboard') { if (!currentUser) { openAuth('login'); return; } loadDashboard(); }
+  if (p === 'dsa') { loadDijkstraCities(); }
+}
+function quickNav(type) {
+  currentType = type;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['flights','trains','buses'][i]===type));
+  showPage('home');
+}
+function setTab(btn, type) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentType = type;
+}
+function quickSearch(from, to, type) {
+  currentType = type;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['flights','trains','buses'][i]===type));
+  document.getElementById('s-from').value = from;
+  document.getElementById('s-to').value = to;
+  doSearch();
+}
+
+// ─── CITY AUTOCOMPLETE (HashMap) ────────────────────────────
+async function fetchCities(inp) {
+  const q = inp.value.trim();
+  if (q.length < 2) return;
+  try {
+    const r = await fetch(`${API}/cities?q=${encodeURIComponent(q)}`);
+    const cities = await r.json();
+    const dl = document.getElementById('city-dl');
+    dl.innerHTML = cities.map(c=>`<option value="${c}">`).join('');
+  } catch(e) {}
+}
+
+// ─── SEARCH ─────────────────────────────────────────────────
+async function doSearch() {
+  const from = document.getElementById('s-from').value.trim();
+  const to = document.getElementById('s-to').value.trim();
+  selectedClass = null;
+
+  showPage('results');
+  document.getElementById('r-title').textContent = `${currentType.charAt(0).toUpperCase()+currentType.slice(1)}: ${from||'All'} → ${to||'All'}`;
+  document.getElementById('r-count').textContent = 'Searching…';
+
+  // Setup class filter chips
+  const cc = document.getElementById('class-filter-section');
+  const bc = document.getElementById('bus-type-section');
+  const df = document.getElementById('direct-filter');
+  if (currentType === 'flights') {
+    cc.style.display='block'; bc.style.display='none'; df.style.display='block';
+    document.getElementById('class-chips').innerHTML = ['Economy','Business','First'].map(c=>
+      `<button class="class-chip" onclick="setClass(this,'${c}')">${c}</button>`).join('');
+  } else if (currentType === 'trains') {
+    cc.style.display='block'; bc.style.display='none'; df.style.display='none';
+    document.getElementById('class-chips').innerHTML = ['Sleeper','3AC','2AC','1AC','CC','EC'].map(c=>
+      `<button class="class-chip" onclick="setClass(this,'${c}')">${c}</button>`).join('');
+  } else {
+    cc.style.display='none'; bc.style.display='block'; df.style.display='none';
+  }
+
+  const list = document.getElementById('results-list');
+  list.innerHTML = [0,1,2,3].map(i=>`
+    <div class="result-card" style="animation-delay:${i*.1}s">
+      <div class="skeleton" style="height:100px;border-radius:10px;"></div>
+    </div>`).join('');
+
+  try {
+    const p = new URLSearchParams();
+    if (from) p.set('from',from);
+    if (to) p.set('to',to);
+    p.set('sort', document.getElementById('f-sort').value);
+    const max = document.getElementById('f-max').value;
+    const min = document.getElementById('f-min').value;
+    if (min && min!=='0') p.set('minP',min);
+    if (max && max!=='30000') p.set('maxP',max);
+    if (currentType==='flights' && document.getElementById('f-direct').checked) p.set('direct','1');
+    if (currentType==='buses' && selectedBusType!=='all') p.set('busType',selectedBusType);
+    if (currentUser) p.set('userId',currentUser.id);
+
+    const res = await fetch(`${API}/${currentType}?${p}`);
+    allResults = await res.json();
+    renderResults();
+  } catch(e) {
+    list.innerHTML = `<div class="empty-state"><span>⚠️</span><p>Backend not running. Start server first:<br><code style="color:var(--accent)">cd backend && node server.js</code></p></div>`;
+  }
+}
+
+function setClass(btn, cls) {
+  document.querySelectorAll('#class-chips .class-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedClass = cls === selectedClass ? null : cls;
+  if (!selectedClass) btn.classList.remove('active');
+  renderResults();
+}
+function setBusType(btn, type) {
+  document.querySelectorAll('#bus-type-chips .class-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedBusType = type;
+  doSearch();
+}
+function applyFilters() {
+  document.getElementById('slider-val').textContent = document.getElementById('f-slider').value;
+  document.getElementById('f-max').value = document.getElementById('f-slider').value;
+  doSearch();
+}
+
+function renderResults() {
+  let items = [...allResults];
+  const max = parseInt(document.getElementById('f-max').value)||30000;
+  const min = parseInt(document.getElementById('f-min').value)||0;
+  items = items.filter(r => r.minPrice >= min && r.minPrice <= max);
+  document.getElementById('r-count').textContent = `${items.length} results · Sorted by Merge Sort · Binary Search active`;
+  const list = document.getElementById('results-list');
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state"><span>🔍</span><p>No results found.<br>Try adjusting filters or different route.</p></div>`;
+    return;
+  }
+  list.innerHTML = items.map((item,i) => buildCard(item, i)).join('');
+}
+
+function buildCard(item, i) {
+  const isF = currentType==='flights';
+  const isT = currentType==='trains';
+  const isB = currentType==='buses';
+  const name = item.airline || item.name || item.operator;
+  const logo = item.airline_code || (item.number||'').slice(0,3) || name.slice(0,2).toUpperCase();
+
+  // Surge detection
+  const baseMin = isB ? item.price : (isF ? Math.min(...[item.price_economy,item.price_business,item.price_first].filter(Boolean)) : Math.min(...[item.price_sleeper,item.price_3ac,item.price_2ac,item.price_1ac,item.price_cc,item.price_ec].filter(Boolean)));
+  const isSurge = item.minPrice > baseMin * 1.3;
+
+  // Stops path
+  const stops = item.stops || [];
+  let stopsHtml = '';
+  if (stops.length > 0) {
+    const allStops = [item.from, ...stops, item.to];
+    stopsHtml = `<div class="stops-path">
+      ${allStops.map((s,idx)=>`
+        <div class="stop-node ${idx===0?'first':idx===allStops.length-1?'last':''}">
+          <div class="s-name">${s}</div>
+          <div class="s-dot"></div>
+        </div>
+        ${idx<allStops.length-1?'<div class="stop-edge"></div>':''}
+      `).join('')}
+    </div>`;
+  }
+
+  // Classes
+  let classesHtml = '';
+  if (isF) {
+    const classes = [
+      {key:'economy',label:'Economy',price:item.dynamicPrices?.economy,seats:item.seats_economy},
+      {key:'business',label:'Business',price:item.dynamicPrices?.business,seats:item.seats_business},
+      {key:'first',label:'First Class',price:item.dynamicPrices?.first,seats:item.seats_first},
+    ].filter(c=>c.price);
+    classesHtml = `<div class="card-classes">
+      <span style="font-size:0.72rem;color:var(--text3);margin-right:4px;">Select Class:</span>
+      ${classes.map(c=>`
+        <div class="class-tag ${selectedClass===c.label?'selected':''} ${!c.price?'unavail':''}" onclick="selectClass(this,'${item.id}','${c.label}',${c.price||0})">
+          <span class="c-name">${c.label}</span>
+          <span class="c-price">₹${(c.price||0).toLocaleString('en-IN')}</span>
+          <span class="c-seats">${c.seats||0} seats</span>
+        </div>`).join('')}
+    </div>`;
+  } else if (isT) {
+    const classes = [
+      {key:'sleeper',label:'Sleeper',price:item.dynamicPrices?.sleeper,seats:item.seats_sleeper},
+      {key:'3ac',label:'3AC',price:item.dynamicPrices?.['3ac'],seats:item.seats_3ac},
+      {key:'2ac',label:'2AC',price:item.dynamicPrices?.['2ac'],seats:item.seats_2ac},
+      {key:'1ac',label:'1AC',price:item.dynamicPrices?.['1ac'],seats:item.seats_1ac},
+      {key:'cc',label:'CC',price:item.dynamicPrices?.cc,seats:item.seats_cc},
+      {key:'ec',label:'EC',price:item.dynamicPrices?.ec,seats:item.seats_ec},
+    ].filter(c=>c.price);
+    classesHtml = `<div class="card-classes">
+      <span style="font-size:0.72rem;color:var(--text3);margin-right:4px;">Select Class:</span>
+      ${classes.map(c=>`
+        <div class="class-tag ${selectedClass===c.label?'selected':''}" onclick="selectClass(this,'${item.id}','${c.label}',${c.price||0})">
+          <span class="c-name">${c.label}</span>
+          <span class="c-price">₹${(c.price||0).toLocaleString('en-IN')}</span>
+          <span class="c-seats">${c.seats||0} seats</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // DSA trace
+  const algo = `🔀 Merge Sort applied · 🔎 Binary Search indexed · ${isSurge?'⚡ Dynamic Pricing active':'✅ Standard Pricing'}`;
+
+  return `<div class="result-card" style="animation-delay:${i*.07}s;position:relative;">
+    <div class="card-top">
+      <div class="airline-logo">${logo}</div>
+      <div class="card-route">
+        <div class="time-dep">
+          <div class="time-big">${item.departure}</div>
+          <div class="time-city">${item.from}</div>
+        </div>
+        <div class="route-mid">
+          <div class="route-dur">${item.duration}</div>
+          <div class="route-line">
+            <div class="route-line-bar"></div>
+            ${stops.length ? stops.map(()=>'<div class="route-stop-dot"></div>').join('<div class="route-line-bar"></div>')+'<div class="route-line-bar"></div>' : ''}
+          </div>
+          <div class="${item.is_direct===1||stops.length===0?'direct-tag':'stop-tag'}">
+            ${item.is_direct===1||stops.length===0?'Direct':stops.length+' stop'+( stops.length>1?'s':'')}
+          </div>
+        </div>
+        <div class="time-arr">
+          <div class="time-big">${item.arrival}</div>
+          <div class="time-city">${item.to}</div>
+        </div>
+      </div>
+      <div class="card-prices">
+        <div class="price-from">from</div>
+        <div class="price-main">₹${item.minPrice.toLocaleString('en-IN')}</div>
+        <div class="price-sub">per person</div>
+        ${isSurge?`<div class="price-surge">⚡ Surge pricing</div>`:''}
+      </div>
+    </div>
+    ${stops.length>0?stopsHtml:''}
+    ${classesHtml}
+    <div class="dsa-trace">
+      <span class="algo-tag">⚙ DSA</span>
+      <span>${algo}</span>
+    </div>
+    <div class="card-bottom">
+      ${isB?`<span class="tag-chip blue">${item.bus_type}</span>`:''}
+      ${isT&&item.number?`<span class="tag-chip">#${item.number}</span>`:''}
+      <span class="tag-chip ${item.seats||item.seats_economy>50?'green':'orange'}">${isB?item.seats:isF?item.seats_economy:item.seats_3ac||item.seats_sleeper} seats</span>
+      ${isSurge?`<span class="tag-chip red">⚡ Book early = cheaper</span>`:`<span class="tag-chip green">✓ Best price</span>`}
+      <button class="book-now-btn" onclick="startBook('${item.id}',${i})">Book Now</button>
+    </div>
+  </div>`;
+}
+
+function selectClass(el, itemId, cls, price) {
+  document.querySelectorAll('.class-tag').forEach(t=>t.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedClass = cls;
+}
+
+// ─── BOOKING ────────────────────────────────────────────────
+function startBook(itemId, idx) {
+  if (!currentUser) { openAuth('login'); return; }
+  const item = allResults.find(r=>r.id===itemId);
+  if (!item) return;
+  pendingBooking = { item, type: currentType };
+
+  const name = item.airline||item.name||item.operator;
+  const price = selectedClass && item.dynamicPrices
+    ? (item.dynamicPrices[selectedClass.toLowerCase().replace(' ','').replace('class','')] || item.minPrice)
+    : item.minPrice;
+
+  document.getElementById('book-summary').innerHTML = `
+    <div class="bs-row"><span>Route</span><span>${item.from} → ${item.to}</span></div>
+    <div class="bs-row"><span>Carrier</span><span>${name}</span></div>
+    <div class="bs-row"><span>Departure</span><span>${item.departure}</span></div>
+    <div class="bs-row"><span>Class</span><span>${selectedClass||'Economy'}</span></div>
+    <div class="bs-row"><span>Price</span><span style="color:var(--accent);font-size:1.1rem;">₹${price.toLocaleString('en-IN')}</span></div>`;
+
+  pendingBooking.price = price;
+  pendingBooking.cls = selectedClass || 'Economy';
+  document.getElementById('p-email').value = currentUser.email||'';
+  document.getElementById('p-phone').value = currentUser.phone||'';
+  document.getElementById('p-age').value = currentUser.age||'';
+  document.getElementById('p-gender').value = currentUser.gender||'other';
+  document.getElementById('p-disability').checked = !!currentUser.disability;
+  document.getElementById('book-err').classList.remove('show');
+  updatePriorityHighlight();
+  document.getElementById('book-modal').classList.add('open');
+}
+
+function updatePriorityHighlight() {
+  const age = parseInt(document.getElementById('p-age').value)||0;
+  const gender = document.getElementById('p-gender').value;
+  const dis = document.getElementById('p-disability').checked;
+  let priority = 4;
+  if (dis) priority = 1;
+  else if (gender==='female'&&age>=40) priority = 2;
+  else if (age>=60) priority = 3;
+  [1,2,3,4].forEach(p=>{
+    const el = document.getElementById('pl-'+p);
+    if(el) el.classList.toggle('active', p===priority);
+  });
+}
+
+function closeBook() { document.getElementById('book-modal').classList.remove('open'); }
+
+async function confirmBooking() {
+  const name=document.getElementById('p-name').value.trim();
+  const age=document.getElementById('p-age').value;
+  const gender=document.getElementById('p-gender').value;
+  const disability=document.getElementById('p-disability').checked;
+  const email=document.getElementById('p-email').value.trim();
+  const phone=document.getElementById('p-phone').value.trim();
+  const errEl=document.getElementById('book-err');
+  if(!name||!age||!email){errEl.textContent='Please fill all fields';errEl.classList.add('show');return;}
+  const token=localStorage.getItem('yg_token');
+  try {
+    const res=await fetch(`${API}/bookings`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({
+        type:pendingBooking.type,
+        itemId:pendingBooking.item.id,
+        passengers:[{name,age,gender,disability}],
+        travelClass:pendingBooking.cls,
+        totalAmount:pendingBooking.price,
+        contactEmail:email,
+        contactPhone:phone
+      })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error);
+    closeBook();
+    toast(`✅ Booked! ${data.id} | Seat ${data.assignedSeat||'assigned'} | ${data.priorityLabel}`,'success');
+    setTimeout(()=>showPage('dashboard'),1800);
+  }catch(e){errEl.textContent=e.message||'Booking failed';errEl.classList.add('show');}
+}
+
+// ─── DASHBOARD ──────────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('dash-name').textContent=`Hey ${currentUser.name}! 👋`;
+  document.getElementById('dash-email').textContent=currentUser.email;
+  const body=document.getElementById('dash-body');
+  body.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">Loading...</div>';
+  const token=localStorage.getItem('yg_token');
+  try {
+    const res=await fetch(`${API}/bookings/my`,{headers:{'Authorization':`Bearer ${token}`}});
+    const bks=await res.json();
+    if(!bks.length){body.innerHTML=`<div class="no-bookings"><span>✈️</span><h3>No bookings yet</h3><p>Search and book your first trip!</p><button class="btn-primary" onclick="showPage('home')" style="margin-top:16px;">Search Trips</button></div>`;return;}
+    body.innerHTML=bks.map((b,i)=>{
+      const item=b.item||{};
+      return `<div class="booking-card" style="animation-delay:${i*.1}s">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+          <span class="booking-type-badge type-${b.type}">${b.type}</span>
+          <span class="${b.status==='Confirmed'?'confirmed-tag':'cancelled-tag'}">${b.status}</span>
+          ${b.seat_number?`<span class="booking-seat">🪑 Seat ${b.seat_number}</span>`:''}
+          ${b.priority_label?`<span class="booking-priority">⚙ ${b.priority_label}</span>`:''}
+          <span style="margin-left:auto;font-size:0.75rem;color:var(--text3)">${b.id}</span>
+        </div>
+        <div class="booking-route">${item.from||''} → ${item.to||''}</div>
+        <div class="booking-meta">${item.airline||item.name||item.operator||''} · ${item.departure||''} – ${item.arrival||''} · ${b.travel_class||'Economy'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+          <div class="booking-amount">₹${(b.total_amount||0).toLocaleString('en-IN')}</div>
+          ${b.status==='Confirmed'?`<button class="cancel-btn" onclick="cancelBooking('${b.id}')">Cancel</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){body.innerHTML='<div class="no-bookings"><span>⚠️</span><p>Failed to load. Is server running?</p></div>';}
+}
+
+async function cancelBooking(id) {
+  if(!confirm('Cancel this booking?'))return;
+  const token=localStorage.getItem('yg_token');
+  await fetch(`${API}/bookings/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});
+  toast('Booking cancelled','error');
+  loadDashboard();
+}
+
+// ─── DIJKSTRA ───────────────────────────────────────────────
+async function loadDijkstraCities() {
+  // cities pre-filled in datalist
+}
+async function runDijkstra() {
+  const from=document.getElementById('d-from').value.trim();
+  const to=document.getElementById('d-to').value.trim();
+  const opt=document.getElementById('d-opt').value;
+  const el=document.getElementById('dijk-result');
+  if(!from||!to){el.innerHTML='<div style="color:var(--red);padding:10px;">Enter both cities</div>';return;}
+  el.innerHTML='<div style="color:var(--text2);padding:10px;">⏳ Running Dijkstra\'s Algorithm on city graph...</div>';
+  try {
+    const res=await fetch(`${API}/route/dijkstra?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&opt=${opt}`);
+    const data=await res.json();
+    const renderRoute=(r,label,color)=>{
+      if(!r.reachable)return`<div style="padding:10px;color:var(--text3)">${label}: No route found</div>`;
+      const pathHtml=r.path.map((c,i)=>`<span class="path-city">${c}</span>${i<r.path.length-1?'<span class="path-arrow">→</span>':''}`).join('');
+      const cost=opt==='time'?`${r.cost} mins`:opt==='distance'?`${r.cost} km`:`₹${r.cost.toLocaleString('en-IN')}`;
+      return`<div class="route-result" style="margin-bottom:10px;border:1px solid ${color}22;">
+        <div style="font-weight:700;color:${color};margin-bottom:6px;">${label} — ${cost}</div>
+        <div class="route-path">${pathHtml}</div>
+        ${r.edges.map(e=>`<span style="font-size:0.72rem;background:rgba(79,195,247,0.08);border:1px solid rgba(79,195,247,0.15);border-radius:6px;padding:2px 8px;color:var(--blue);margin-right:4px;">${e.transport} ₹${e.price} ${e.duration}min</span>`).join('')}
+      </div>`;
+    };
+    el.innerHTML=`
+      <div style="background:rgba(246,166,35,0.06);border:1px solid rgba(246,166,35,0.2);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.78rem;color:var(--text2);">
+        ⚙ <strong style="color:var(--accent);">Dijkstra's Algorithm</strong> — Adjacency List Graph + Min-Heap PQ · O((V+E)log V) · Optimizing: <strong>${opt}</strong>
+      </div>
+      ${renderRoute(data.overall,'🏆 Best Overall','var(--accent)')}
+      ${renderRoute(data.flight,'✈ By Flight','var(--blue)')}
+      ${renderRoute(data.train,'🚂 By Train','var(--green)')}
+      ${renderRoute(data.bus,'🚌 By Bus','var(--accent2)')}`;
+  }catch(e){el.innerHTML='<div style="color:var(--red);padding:10px;">Server not running</div>';}
+}
+
+// ─── HEAP VISUALIZER ────────────────────────────────────────
+function computeP(age,gender,disability){
+  if(disability)return 1;
+  if(gender==='female'&&parseInt(age)>=40)return 2;
+  if(parseInt(age)>=60)return 3;
+  return 4;
+}
+function addToHeap(name,age,gender,disability){
+  const p=computeP(age,gender,disability);
+  heapData.push({name,age,gender,disability,priority:p});
+  heapData.sort((a,b)=>a.priority-b.priority);
+  renderHeap();
+  const labels=['','♿ Disability','👩 Women 40+','👴 Senior 60+','👤 General'];
+  document.getElementById('heap-log').innerHTML+=`<div>→ Inserted <b>${name}</b> (age ${age}) — Priority ${p}: ${labels[p]}</div>`;
+}
+function extractFromHeap(){
+  if(!heapData.length){document.getElementById('heap-log').innerHTML+='<div style="color:var(--red)">Heap empty!</div>';return;}
+  const min=heapData.shift();
+  renderHeap();
+  document.getElementById('heap-log').innerHTML+=`<div style="color:var(--green)">✅ ExtractMin → <b>${min.name}</b> (Priority ${min.priority}) — Seat Assigned!</div>`;
+}
+function clearHeap(){heapData=[];renderHeap();document.getElementById('heap-log').innerHTML='';}
+function renderHeap(){
+  const colors={1:'priority-1',2:'priority-2',3:'priority-3',4:'priority-4'};
+  const labels={1:'♿',2:'👩',3:'👴',4:'👤'};
+  document.getElementById('heap-display').innerHTML=heapData.length?
+    heapData.map((n,i)=>`<div class="heap-node ${colors[n.priority]}">${labels[n.priority]}<div style="font-size:0.7rem;margin-top:2px;">${n.name}</div><div class="pn">P${n.priority}</div></div>`).join('')
+    :'<div style="color:var(--text3);font-size:0.85rem;">Heap is empty — add passengers above</div>';
+}
+
+// ─── STACK ──────────────────────────────────────────────────
+async function loadStack(){
+  if(!currentUser){toast('Login first to see your search stack','info');return;}
+  const token=localStorage.getItem('yg_token');
+  try{
+    const res=await fetch(`${API}/search-history`,{headers:{'Authorization':`Bearer ${token}`}});
+    const data=await res.json();
+    const el=document.getElementById('stack-display');
+    if(!data.db||!data.db.length){el.innerHTML='<div style="color:var(--text3);font-size:0.82rem;padding:8px;">No searches yet. Search something first!</div>';return;}
+    el.innerHTML=data.db.map((s,i)=>`
+      <div class="stack-item ${i===0?'top':''}">
+        ${i===0?'<span class="stack-badge">TOP</span>':'<span style="font-size:0.7rem;color:var(--text3);padding:2px 8px;border-radius:100px;background:var(--bg);">#${i+1}</span>'}
+        <span style="font-weight:600;">${s.search_from} → ${s.search_to}</span>
+        <span style="background:rgba(79,195,247,0.1);color:var(--blue);font-size:0.7rem;padding:2px 8px;border-radius:100px;">${s.search_type}</span>
+        <span style="color:var(--text3);font-size:0.72rem;margin-left:auto;">${new Date(s.searched_at).toLocaleTimeString('en-IN')}</span>
+      </div>`).join('');
+  }catch(e){toast('Server not running','error');}
+}
+
+// ─── AUTH ────────────────────────────────────────────────────
+function openAuth(f){document.getElementById('auth-modal').classList.add('open');switchAuth(f);}
+function closeAuth(){document.getElementById('auth-modal').classList.remove('open');}
+function switchAuth(f){
+  document.getElementById('form-login').style.display=f==='login'?'block':'none';
+  document.getElementById('form-signup').style.display=f==='signup'?'block':'none';
+}
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  const err=document.getElementById('login-err');
+  if(!email||!pass){err.textContent='Fill all fields';err.classList.add('show');return;}
+  try{
+    const res=await fetch(`${API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const data=await res.json();
+    if(!res.ok){err.textContent=data.error;err.classList.add('show');return;}
+    currentUser=data.user;
+    localStorage.setItem('yg_token',data.token);
+    localStorage.setItem('yg_user',JSON.stringify(data.user));
+    updateNav();closeAuth();
+    toast(`Welcome back, ${data.user.name}! 👋`,'success');
+  }catch(e){err.textContent='Server not running';err.classList.add('show');}
+}
+async function doSignup(){
+  const name=document.getElementById('su-name').value.trim();
+  const email=document.getElementById('su-email').value.trim();
+  const pass=document.getElementById('su-pass').value;
+  const phone=document.getElementById('su-phone').value.trim();
+  const age=document.getElementById('su-age').value;
+  const gender=document.getElementById('su-gender').value;
+  const disability=document.getElementById('su-disability').checked;
+  const err=document.getElementById('signup-err');
+  if(!name||!email||!pass){err.textContent='Fill all fields';err.classList.add('show');return;}
+  if(pass.length<6){err.textContent='Password min 6 chars';err.classList.add('show');return;}
+  try{
+    const res=await fetch(`${API}/auth/signup`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password:pass,phone,age,gender,disability})});
+    const data=await res.json();
+    if(!res.ok){err.textContent=data.error;err.classList.add('show');return;}
+    currentUser=data.user;
+    localStorage.setItem('yg_token',data.token);
+    localStorage.setItem('yg_user',JSON.stringify(data.user));
+    updateNav();closeAuth();
+    toast(`Account created! Welcome ${data.user.name}! 🎉`,'success');
+  }catch(e){err.textContent='Server not running';err.classList.add('show');}
+}
+function doLogout(){
+  currentUser=null;
+  localStorage.removeItem('yg_token');localStorage.removeItem('yg_user');
+  document.getElementById('nav-user').style.display='none';
+  document.getElementById('nav-auth').style.display='flex';
+  showPage('home');toast('Logged out','info');
+}
+function updateNav(){
+  document.getElementById('nav-auth').style.display='none';
+  const nu=document.getElementById('nav-user');
+  nu.style.display='flex';nu.style.alignItems='center';
+  document.getElementById('nav-avatar').textContent=currentUser.name.charAt(0).toUpperCase();
+}
+function updatePriorityHighlight(){
+  const age=parseInt(document.getElementById('p-age').value)||0;
+  const gender=document.getElementById('p-gender').value;
+  const dis=document.getElementById('p-disability').checked;
+  let p=4;
+  if(dis)p=1;else if(gender==='female'&&age>=40)p=2;else if(age>=60)p=3;
+  [1,2,3,4].forEach(x=>{const el=document.getElementById('pl-'+x);if(el)el.classList.toggle('active',x===p);});
+}
+function toast(msg,type='info'){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(),5000);
+}
+// Close modals on backdrop click
+document.getElementById('auth-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAuth();});
+document.getElementById('book-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeBook();});
+// Age input real-time priority update
+document.addEventListener('input',e=>{if(e.target.id==='p-age')updatePriorityHighlight();});
+</script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="profile-page">
+  <div class="profile-top">
+    <div class="profile-avatar-big">{{ teacher.full_name[:2].upper() }}</div>
+    <div class="profile-info">
+      <h1>{{ teacher.full_name }}</h1>
+      <div class="profile-subjects">{{ teacher.subjects }}</div>
+      <div class="profile-meta">
+        <span>📍 {{ teacher.area }}, Dehradun</span>
+        <span>🎓 {{ teacher.experience_years }} years exp</span>
+        <span>📚 {{ teacher.classes_taught }}</span>
+        <span class="mode-pill">{{ teacher.teaching_mode }}</span>
+        {% if teacher.is_verified %}<span class="verified-pill">✅ Verified</span>{% endif %}
+      </div>
+      <div class="profile-rating-row">
+        <span class="big-rating">★ {{ teacher.rating }}/5.0</span>
+        <span class="review-count">({{ teacher.total_reviews }} student reviews)</span>
+      </div>
+    </div>
+    <div class="profile-fee-card">
+      <div class="fee-amount">₹{{ teacher.monthly_fee }}<span>/month</span></div>
+      <div class="fee-sub">+ FREE first demo class</div>
+      <a href="tel:{{ teacher.phone }}" class="btn-primary btn-full">📞 Call Now</a>
+      <a href="https://wa.me/91{{ teacher.phone }}" class="btn-whatsapp btn-full" target="_blank">💬 WhatsApp</a>
+      <button onclick="document.getElementById('rateSection').scrollIntoView({behavior:'smooth'})" class="btn-outline btn-full">⭐ Rate Teacher</button>
+    </div>
+  </div>
+
+  <div class="profile-body">
+    <div class="profile-left">
+      <div class="profile-section">
+        <h3>About {{ teacher.full_name }}</h3>
+        <p>{{ teacher.about }}</p>
+      </div>
+      <div class="profile-section">
+        <h3>Details</h3>
+        <div class="details-grid">
+          <div><label>Education</label><span>{{ teacher.education }}</span></div>
+          <div><label>Experience</label><span>{{ teacher.experience_years }} years</span></div>
+          <div><label>Area</label><span>{{ teacher.area }}</span></div>
+          <div><label>Mode</label><span>{{ teacher.teaching_mode }}</span></div>
+          <div><label>Classes</label><span>{{ teacher.classes_taught }}</span></div>
+          <div><label>Monthly Fee</label><span>₹{{ teacher.monthly_fee }}/month</span></div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <h3>Subjects Taught</h3>
+        <div class="subject-tags">
+          {% for s in teacher.subjects.split(',') %}
+          <span class="subject-tag">{{ s.strip() }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if reviews %}
+      <div class="profile-section">
+        <h3>Student Reviews</h3>
+        {% for r in reviews %}
+        <div class="review-card">
+          <div class="review-header">
+            <span class="reviewer">{{ r.student_name }}</span>
+            <span class="review-stars">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
+          </div>
+          <p>{{ r.review }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="profile-section" id="rateSection">
+        <h3>⭐ Rate This Teacher</h3>
+        <div class="rating-form">
+          <div class="star-select" id="starSelect">
+            {% for i in range(1,6) %}<span class="star-opt" data-val="{{ i }}" onclick="selectStar({{ i }})">☆</span>{% endfor %}
+          </div>
+          <textarea id="reviewText" placeholder="Write your review..." rows="3"></textarea>
+          <button onclick="submitRating({{ teacher.id }})" class="btn-primary">Submit Rating</button>
+          <div id="ratingMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-right">
+      <div class="sidebar-card">
+        <h3>🌲 AI Match Score</h3>
+        <p style="font-size:13px;color:var(--text-muted)">Random Forest + Content-Based Score</p>
+        <div class="ai-score-display" id="aiScoreDisplay">
+          <select id="ps-subject" onchange="getProfileScore()"><option value="">Select Subject</option>
+            <option>Mathematics</option><option>Physics</option><option>Chemistry</option>
+            <option>Biology</option><option>English</option><option>Computer Science</option></select>
+          <div id="profileScore"></div>
+        </div>
+      </div>
+      <div class="sidebar-card">
+        <h3>📍 Location</h3>
+        <div class="location-info">
+          <p>📍 {{ teacher.area }}, Dehradun, Uttarakhand</p>
+          <p>📞 {{ teacher.phone }}</p>
+          <p>✉️ {{ teacher.email }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedRating = 0;
+function selectStar(n) {
+  selectedRating = n;
+  document.querySelectorAll('.star-opt').forEach((s,i) => s.textContent = i < n ? '★' : '☆');
+}
+async function submitRating(teacherId) {
+  if (!selectedRating) { alert('Please select a rating!'); return; }
+  const res = await fetch('/api/rate-teacher',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({teacher_id:teacherId,rating:selectedRating,review:document.getElementById('reviewText').value})});
+  const data = await res.json();
+  document.getElementById('ratingMsg').innerHTML = data.success ?
+    `<div class="alert-success">✅ Thanks! New rating: ★ ${data.new_rating}</div>` :
+    '<div class="alert-error">Please login to rate.</div>';
+}
+async function getProfileScore() {
+  const subject = document.getElementById('ps-subject').value;
+  if (!subject) return;
+  const res = await fetch('/api/recommend',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({subject,goal:'board',mode:'',budget:0})});
+  const data = await res.json();
+  const match = data.results.find(t => t.teacher_code === '{{ teacher.teacher_code }}');
+  const rfMatch = data.rf_results?.find(t => t.teacher_code === '{{ teacher.teacher_code }}');
+  document.getElementById('profileScore').innerHTML = match ?
+    `<div class="score-display">
+      <div>Content-Based: <strong>${match.match_score}/100</strong></div>
+      <div>Random Forest: <strong>${rfMatch?.rf_score?.toFixed(1)||'N/A'}/100</strong></div>
+      <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${match.match_score}%"></div></div>
+    </div>` : '<div style="color:var(--text-muted);font-size:13px">Not in top results for this subject</div>';
+}
+</script>
+{% endblock %}

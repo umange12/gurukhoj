@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Teach With Us – GuruKhoj</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="topbar"><a href="/" class="brand" style="text-decoration:none"><div class="brand-logo">📚</div><div><div class="brand-name">GuruKhoj</div></div></a><div class="topbar-right"><button class="theme-toggle" onclick="toggleTheme()"><span id="themeIcon">☀️</span></button>{% if user %}<a href="{{ '/admin' if user.role=='admin' else '/teacher-dashboard' if user.role=='teacher' else '/student-portal' }}" class="btn btn-purple btn-sm">Dashboard</a>{% else %}<a href="/login" class="btn btn-purple btn-sm">Login</a>{% endif %}</div></div>
+<nav class="navbar"><a href="/">🏠 Home</a><a href="/our-teachers">👩‍🏫 Our Teachers</a><a href="/student-registration">🎓 Register</a><a href="/teacher-enrollment" class="active">✨ Teach With Us</a></nav>
+<section style="padding:60px 5%">
+  <div class="section-inner" style="max-width:680px">
+    <div class="section-head reveal"><div class="section-tag">✨ Join GuruKhoj</div><div class="section-title">Start Teaching & Earning</div><div class="section-sub">Apply to become a verified GuruKhoj tutor and connect with students across Dehradun</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:32px" class="reveal">
+      <div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">💰</div><div style="font-size:15px;font-weight:800">Earn ₹1,200+</div><div style="font-size:12px;color:var(--muted)">Per month per student</div></div>
+      <div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">🤖</div><div style="font-size:15px;font-weight:800">AI Matched</div><div style="font-size:12px;color:var(--muted)">Students matched to you</div></div>
+      <div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">📊</div><div style="font-size:15px;font-weight:800">Track Progress</div><div style="font-size:12px;color:var(--muted)">AI-powered dashboard</div></div>
+    </div>
+    <div class="card reveal" style="padding:32px">
+      <div class="form-row"><div class="form-group"><label>Full Name *</label><input type="text" id="e_name" placeholder="Dr. Priya Sharma"></div><div class="form-group"><label>Email *</label><input type="email" id="e_email" placeholder="you@email.com"></div></div>
+      <div class="form-row"><div class="form-group"><label>Phone *</label><input type="tel" id="e_phone" placeholder="+91 98765 43210"></div><div class="form-group"><label>Gender</label><select id="e_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div></div>
+      <div class="form-group"><label>Education / Qualifications *</label><input type="text" id="e_edu" placeholder="IIT Roorkee - B.Tech Mathematics"></div>
+      <div class="form-row"><div class="form-group"><label>Subjects You Teach *</label><input type="text" id="e_subjects" placeholder="Mathematics, Physics"></div><div class="form-group"><label>Classes</label><input type="text" id="e_classes" placeholder="Class 6-12"></div></div>
+      <div class="form-row"><div class="form-group"><label>Experience (years)</label><input type="number" id="e_exp" placeholder="5" min="0"></div><div class="form-group"><label>Teaching Mode *</label><select id="e_mode"><option value="Both">Both</option><option value="Online">Online</option><option value="Home Visit">Home Visit</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label>Your Area *</label><input type="text" id="e_area" placeholder="Rajpur Road, Dehradun"></div><div class="form-group"><label>Expected Monthly Fee (₹)</label><input type="number" id="e_fee" placeholder="2000"></div></div>
+      <div class="form-group"><label>About You</label><textarea id="e_about" rows="3" placeholder="Briefly describe your teaching approach and experience..."></textarea></div>
+      <button class="btn btn-purple w-full" style="justify-content:center;font-size:14px;padding:13px" onclick="submitEnroll()">✨ Submit Application →</button>
+    </div>
+  </div>
+</section>
+<footer class="footer"><div class="footer-bottom">© 2025 GuruKhoj — <a href="/" style="color:var(--purple-l)">Home</a></div></footer>
+<div id="toast" class="toast"></div>
+<script src="/static/js/main.js"></script>
+<script>
+async function submitEnroll(){
+  const d={name:document.getElementById('e_name').value,email:document.getElementById('e_email').value,phone:document.getElementById('e_phone').value,gender:document.getElementById('e_gender').value,education:document.getElementById('e_edu').value,subjects:document.getElementById('e_subjects').value,classes:document.getElementById('e_classes').value,experience:document.getElementById('e_exp').value,mode:document.getElementById('e_mode').value,area:document.getElementById('e_area').value,fee:document.getElementById('e_fee').value,about:document.getElementById('e_about').value};
+  if(!d.name||!d.email||!d.phone||!d.subjects){showToast('Please fill all required fields','error');return}
+  const btn=event.target;btn.textContent='⏳ Submitting...';btn.disabled=true;
+  const res=await api('/teacher-enrollment','POST',d);
+  if(res.success){showToast('Application submitted! We will contact you within 24 hours! 🎉');btn.textContent='✅ Submitted!';}
+  else{showToast(res.error||'Failed','error');btn.textContent='✨ Submit Application →';btn.disabled=false;}
+}
+</script>
+</body></html>
